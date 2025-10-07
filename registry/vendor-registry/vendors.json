@@ -1,0 +1,11 @@
+{
+  "version": "2024-01-01",
+  "vendors": [
+    {
+      "id": "acme-cloud",
+      "name": "Acme Cloud Identity",
+      "website": "https://id.acme.test",
+      "contact": "security@acme.test"
+    }
+  ]
+}
