@@ -84,3 +84,30 @@ def test_verify_and_revoke() -> None:
     revoked = revoke_response.json()
     assert revoked["status"] == "revoked"
     assert "revoked_at" in revoked
+
+
+def test_revoke_badge_preserves_evidence_urls() -> None:
+    client = TestClient(app)
+    payload = _issue_payload()
+    payload["evidence_urls"] = [
+        "https://example.com/evidence-1",
+        "https://example.com/evidence-2",
+    ]
+
+    issue_response = client.post("/issue", json=payload)
+    badge = issue_response.json()
+
+    revoke_response = client.post(
+        "/revoke",
+        json={
+            "vendor": badge["vendor"],
+            "application": badge["application"],
+            "version": badge["version"],
+        },
+    )
+    assert revoke_response.status_code == 200
+    revoked = revoke_response.json()
+    assert revoked["evidence_urls"] == payload["evidence_urls"]
+
+    verify_response = client.post("/verify", json=revoked)
+    assert verify_response.status_code == 200
