@@ -1,0 +1,7 @@
+https://openauthcert.org/
+https://openauthcert.org/registry
+https://openauthcert.org/verify
+https://openauthcert.org/spec
+https://openauthcert.org/apply
+https://openauthcert.org/governance
+https://openauthcert.org/trust
