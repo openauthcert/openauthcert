@@ -35,15 +35,25 @@ Each badge file contains a **digital signature** created by the Initiative.
 To verify a badge manually:
 
 ```bash
-python tools/tooling/sign_verify.py verify registry/badge-registry/<vendor>/<app>/<version>.json public_key.pem
+python tools/tooling/sign_verify.py verify registry/badge-registry/<vendor>_<app>_<version>.json specs/badge-spec/public.pem
 ```
 
 ---
 
 ## Automation
-- **GitHub Actions** validate every badge submission against the schema and verify its signature.  
-- **Nightly compliance probes** re-check documentation availability and protocol functionality.  
+- **GitHub Actions** validate every badge submission against the schema and verify its signature.
+- **Nightly compliance probes** re-check documentation availability and protocol functionality.
 - **Automatic revocation** triggers if a certified feature becomes paywalled or non-compliant.
+
+### Repository Secrets
+
+Configure the following repository secrets so workflows can sign and verify badges:
+
+| Secret | Description |
+| --- | --- |
+| `OAC_PRIVATE_KEY_B64` | Base64-encoded 32-byte Ed25519 private key used for signing |
+| `OAC_PUBLIC_KEY_PEM` | PEM-encoded Ed25519 public key for verification |
+| `GH_TOKEN` | Token with `contents:write` to push revocation commits |
 
 ---
 

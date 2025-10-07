@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+website/node_modules/
+website/.vitepress/dist/
+.env
+.DS_Store

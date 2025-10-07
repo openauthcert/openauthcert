@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openauthcert.dev/schema/badge/v1",
+  "title": "OpenAuthCert Badge",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "vendor",
+    "application",
+    "version",
+    "badge_type",
+    "status",
+    "issued_at",
+    "digital_signature"
+  ],
+  "properties": {
+    "vendor": {
+      "type": "string",
+      "minLength": 1
+    },
+    "application": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "badge_type": {
+      "type": "string",
+      "enum": [
+        "free-sso-idp",
+        "free-ldap-support",
+        "free-oidc-support",
+        "free-saml-support",
+        "multi-idp-ready"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "certified",
+        "pending",
+        "revoked",
+        "denied"
+      ]
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "revoked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evidence_urls": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    },
+    "notes": {
+      "type": "string"
+    },
+    "digital_signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/=]+$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "revoked"
+          }
+        }
+      },
+      "then": {
+        "required": ["revoked_at"]
+      }
+    }
+  ]
+}
