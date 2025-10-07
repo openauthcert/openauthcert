@@ -1,0 +1,29 @@
+name: badge-server-ci
+
+on:
+  pull_request:
+    paths:
+      - 'apps/badge-server/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/badge-server/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          pip install -r apps/badge-server/requirements.txt
+          pip install pytest
+      - name: Run tests
+        env:
+          OAC_PRIVATE_KEY_B64: ${{ secrets.OAC_PRIVATE_KEY_B64 }}
+          OAC_PUBLIC_KEY_PEM: ${{ secrets.OAC_PUBLIC_KEY_PEM }}
+        run: pytest apps/badge-server/tests

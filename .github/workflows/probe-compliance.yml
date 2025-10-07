@@ -1,0 +1,37 @@
+name: probe-compliance
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+  checks: read
+  statuses: read
+  pull-requests: read
+  id-token: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install tooling dependencies
+        run: pip install -r tools/tooling/requirements.txt
+      - name: Generate probe evidence
+        run: python tools/tooling/probe_compliance.py registry/badge-registry registry/evidence
+      - name: Upload evidence artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-evidence
+          path: registry/evidence
+      - name: Summarize results
+        run: |
+          echo "## Compliance summary" >> $GITHUB_STEP_SUMMARY
+          echo "Generated stub compliance results for published badges." >> $GITHUB_STEP_SUMMARY
