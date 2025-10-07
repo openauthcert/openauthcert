@@ -113,7 +113,7 @@ async def issue_badge(badge_in: BadgeIn) -> Badge:
     if badge_in.status == "revoked" and not badge_in.revoked_at:
         raise HTTPException(status_code=400, detail="revoked_at required when status is revoked")
     issued_at = badge_in.issued_at or _utcnow()
-    payload: Dict[str, object] = badge_in.model_dump()
+    payload: Dict[str, object] = badge_in.model_dump(mode="json")
     payload["issued_at"] = issued_at
     signature = _sign_badge(payload)
     badge = Badge(**payload, digital_signature=signature)
@@ -124,7 +124,7 @@ async def issue_badge(badge_in: BadgeIn) -> Badge:
 
 @app.post("/verify", response_model=Badge)
 async def verify_badge(badge: Badge) -> Badge:
-    _verify_badge(badge.model_dump())
+    _verify_badge(badge.model_dump(mode="json"))
     return badge
 
 
@@ -134,7 +134,7 @@ async def revoke_badge(request: RevokeRequest) -> Badge:
     existing = BADGE_STORE.get(key)
     if not existing:
         raise HTTPException(status_code=404, detail="Badge not found")
-    payload = existing.model_dump()
+    payload = existing.model_dump(mode="json")
     payload["status"] = "revoked"
     payload["revoked_at"] = _utcnow()
     if request.notes:
