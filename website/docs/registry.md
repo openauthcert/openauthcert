@@ -7,10 +7,11 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vitepress'
 import RegistryList from './.vitepress/theme/components/RegistryList.vue'
 import RegistryFilters, { type RegistryQuery } from './.vitepress/theme/components/RegistryFilters.vue'
-import { facets, searchBadges } from './.vitepress/registry'
+import { facets, getAllBadges, searchBadges } from './.vitepress/registry'
 
 const pageSize = 20
 const facetData = facets()
+const initialCount = getAllBadges().length
 const query = ref<RegistryQuery>({})
 
 const sortOptions = [
@@ -173,6 +174,13 @@ function compareSemver(a: string, b: string) {
 
 The registry aggregates every badge defined in the repository. Use the filters to explore badges by vendor, application, badge type, and lifecycle state.
 
+<p class="registry-intro" v-if="initialCount > 0">
+  Currently tracking <strong>{{ initialCount }}</strong> badge<span v-if="initialCount !== 1">s</span> in this repository.
+</p>
+<p class="registry-intro" v-else>
+  No badges have been published yet. Submit one through the <a href="/apply">apply process</a>.
+</p>
+
 <div class="registry-toolbar">
   <RegistryFilters
     :query="query"
@@ -205,6 +213,10 @@ The registry aggregates every badge defined in the repository. Use the filters t
   flex-direction: column;
   gap: 1.25rem;
   margin-bottom: 2rem;
+}
+
+.registry-intro {
+  color: var(--vp-c-text-2);
 }
 
 .sort {

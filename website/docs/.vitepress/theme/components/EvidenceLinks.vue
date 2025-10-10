@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { Badge } from '../../registry'
 
 const props = defineProps<{ badge: Badge }>()
 
-const localEvidencePath = `/registry/evidence/${props.badge.vendor}/${props.badge.application}/${props.badge.version}/`
+const localEvidencePath = computed(
+  () => `/registry/evidence/${props.badge.vendor}/${props.badge.application}/${props.badge.version}/`
+)
 </script>
 
 <template>

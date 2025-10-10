@@ -20,7 +20,7 @@ The repository includes a helper script that demonstrates signing and verificati
 ```bash
 python tools/tooling/sign_verify.py verify \
   --public-key website/public/public_key.pem \
-  --badge registry/badge-registry/acme-cloud_cloud-sso_1.0.0.json
+  --badge registry/badge-registry/acme-cloud/cloud-sso/1.0.0.json
 ```
 
 The script reads the badge, canonicalizes it, and verifies the signature against the PEM key. Use it as a reference for your own automation.
@@ -46,7 +46,7 @@ Vendors can publish a signed badge on their sites using JSON-LD:
     "distribution": {
       "@type": "DataDownload",
       "encodingFormat": "application/json",
-      "contentUrl": "https://openauthcert.org/registry/badge-registry/acme-cloud_cloud-sso_1.0.0.json"
+      "contentUrl": "https://openauthcert.org/registry/badge-registry/acme-cloud/cloud-sso/1.0.0.json"
     }
   }
 }

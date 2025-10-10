@@ -50,7 +50,10 @@ function formatDate(value: string) {
       </div>
     </dl>
 
-    <p v-if="badge.notes" class="badge-card__notes">{{ badge.notes }}</p>
+    <p v-if="badge.notes" class="badge-card__notes">
+      <span v-if="badge.revoked" class="badge-card__notes-label">Revocation note:</span>
+      <span>{{ badge.notes }}</span>
+    </p>
     <slot />
   </article>
 </template>
@@ -149,5 +152,13 @@ function formatDate(value: string) {
   border-left: 3px solid var(--vp-c-brand-1);
   background: var(--vp-c-bg-soft);
   color: var(--vp-c-text-1);
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.badge-card__notes-label {
+  font-weight: 700;
+  color: var(--vp-c-danger-1);
 }
 </style>

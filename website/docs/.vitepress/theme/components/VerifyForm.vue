@@ -34,8 +34,8 @@ async function verify() {
     const signature = base64ToBytes(signatureBase64)
     const key = await loadPublicKey()
     const encoder = new TextEncoder()
-    const valid = await globalThis.crypto!.subtle.verify(
-      'Ed25519',
+    const valid = await globalThis.crypto.subtle.verify(
+      { name: 'Ed25519' },
       key,
       signature,
       encoder.encode(canonical)
