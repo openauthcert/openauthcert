@@ -45,7 +45,10 @@ export default defineConfig({
       { text: 'Overview', link: '/' },
       { text: 'Registry', link: '/registry' },
       { text: 'Verify', link: '/verify' },
-      { text: 'Spec', link: '/spec' }
+      { text: 'Spec', link: '/spec' },
+      { text: 'Apply', link: '/apply' },
+      { text: 'Governance', link: '/governance' },
+      { text: 'Trust', link: '/trust' }
     ],
     sidebar: {
       '/': [
