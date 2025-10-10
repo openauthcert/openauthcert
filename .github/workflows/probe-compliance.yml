@@ -35,3 +35,14 @@ jobs:
         run: |
           echo "## Compliance summary" >> $GITHUB_STEP_SUMMARY
           echo "Generated stub compliance results for published badges." >> $GITHUB_STEP_SUMMARY
+      - name: Commit evidence
+        if: always()
+        run: |
+          git config user.name "oac-bot"
+          git config user.email "bot@openauthcert.org"
+          git checkout -B evidence-data
+          git add registry/evidence || true
+          git commit -m "evidence: $(date -u +%Y-%m-%dT%H:%M:%SZ)" || exit 0
+          git push -f origin evidence-data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

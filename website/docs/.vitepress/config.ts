@@ -24,6 +24,8 @@ const jsonLd = {
   ]
 }
 
+const faviconDataUri = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"%3E%3Crect width="16" height="16" rx="4" fill="%23093bff"/%3E%3Ctext x="8" y="11" text-anchor="middle" font-size="9" font-family="Arial,Helvetica,sans-serif" fill="white"%3EO%3C/text%3E%3C/svg%3E'
+
 const head: HeadConfig[] = [
   ['meta', { property: 'og:title', content: siteTitle }],
   ['meta', { property: 'og:description', content: siteDescription }],
@@ -31,6 +33,7 @@ const head: HeadConfig[] = [
   ['meta', { property: 'og:url', content: siteUrl }],
   ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
   ['link', { rel: 'canonical', href: siteUrl }],
+  ['link', { rel: 'icon', href: faviconDataUri }],
   ['script', { type: 'application/ld+json' }, JSON.stringify(jsonLd)]
 ]
 
@@ -40,7 +43,7 @@ export default defineConfig({
   description: siteDescription,
   head,
   themeConfig: {
-    logo: '/favicon.ico',
+    logo: faviconDataUri,
     nav: [
       { text: 'Overview', link: '/' },
       { text: 'Registry', link: '/registry' },
