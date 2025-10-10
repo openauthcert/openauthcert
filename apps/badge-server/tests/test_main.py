@@ -87,6 +87,11 @@ def test_verify_and_revoke() -> None:
 
 
 def test_revoke_badge_preserves_evidence_urls() -> None:
+    """
+    Verifies that evidence URLs included when issuing a badge are preserved after revocation and that the revoked badge still verifies.
+    
+    Issues a badge with two `evidence_urls`, revokes it using its identifiers, asserts the revoked response retains the same `evidence_urls`, and confirms verification of the revoked badge succeeds.
+    """
     client = TestClient(app)
     payload = _issue_payload()
     payload["evidence_urls"] = [
