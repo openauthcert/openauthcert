@@ -110,6 +110,18 @@ async def list_badges() -> List[Badge]:
 
 @app.post("/issue", response_model=Badge)
 async def issue_badge(badge_in: BadgeIn) -> Badge:
+    """
+    Issue a new badge by signing the badge payload, storing it, and returning the signed Badge.
+    
+    Parameters:
+        badge_in: Input badge data; if `issued_at` is not provided it will be set to the current UTC time. If `status` is "revoked", `revoked_at` must be present.
+    
+    Returns:
+        The created Badge including a base64-encoded `digital_signature`.
+    
+    Raises:
+        HTTPException: If `status` is "revoked" but `revoked_at` is not provided (status code 400).
+    """
     if badge_in.status == "revoked" and not badge_in.revoked_at:
         raise HTTPException(status_code=400, detail="revoked_at required when status is revoked")
     issued_at = badge_in.issued_at or _utcnow()
@@ -124,12 +136,39 @@ async def issue_badge(badge_in: BadgeIn) -> Badge:
 
 @app.post("/verify", response_model=Badge)
 async def verify_badge(badge: Badge) -> Badge:
+    """
+    Validate the digital signature on a Badge.
+    
+    Parameters:
+        badge (Badge): Badge object containing the signed payload and `digital_signature`.
+    
+    Returns:
+        Badge: The same `badge` instance if the signature is valid.
+    
+    Raises:
+        fastapi.HTTPException: If the badge is missing or has an invalid `digital_signature`.
+    """
     _verify_badge(badge.model_dump(mode="json"))
     return badge
 
 
 @app.post("/revoke", response_model=Badge)
 async def revoke_badge(request: RevokeRequest) -> Badge:
+    """
+    Revoke a previously issued badge identified by vendor, application, and version.
+    
+    Parameters:
+        request (RevokeRequest): Identifies the badge to revoke (vendor, application, version) and may include optional `notes` to attach to the revoked badge.
+    
+    Returns:
+        Badge: The updated badge with `status` set to "revoked", `revoked_at` set to the current UTC timestamp, any provided `notes` applied, and a newly generated `digital_signature`.
+    
+    Raises:
+        HTTPException: Raises with status code 404 if the specified badge does not exist.
+    
+    Side effects:
+        Updates the in-memory BADGE_STORE with the revoked badge.
+    """
     key = _badge_key(request.vendor, request.application, request.version)
     existing = BADGE_STORE.get(key)
     if not existing:
