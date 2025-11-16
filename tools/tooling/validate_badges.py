@@ -1,76 +1,35 @@
 #!/usr/bin/env python3
-"""Validate badge registry entries against the schema and digital signature."""
-
-import argparse
-import base64
-import json
-import pathlib
-from typing import Iterable
-
+import argparse, json, pathlib, base64, sys
+from jsonschema import validate
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
-from jsonschema import Draft202012Validator
+from cryptography.exceptions import InvalidSignature
 
+def canonical(d): return json.dumps(d, sort_keys=True, separators=(",",":")).encode()
 
-def _canonical_json(data: dict) -> bytes:
-    return json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
+def main():
+  ap = argparse.ArgumentParser()
+  ap.add_argument("registry_dir")
+  ap.add_argument("schema_path")
+  ap.add_argument("public_key_pem")
+  args = ap.parse_args()
 
+  schema = json.loads(pathlib.Path(args.schema_path).read_text())
+  pub = serialization.load_pem_public_key(pathlib.Path(args.public_key_pem).read_bytes())
 
-def _load_public_key(pem_path: pathlib.Path) -> ed25519.Ed25519PublicKey:
-    pem = pem_path.read_bytes()
-    return serialization.load_pem_public_key(pem)
+  bad = False
+  for p in pathlib.Path(args.registry_dir).rglob("*.json"):
+    data = json.loads(p.read_text())
+    try:
+      validate(data, schema)
+    except Exception as e:
+      print(f"Schema error: {p}: {e}"); bad = True; continue
+    body = {k:v for k,v in data.items() if k!="digital_signature"}
+    sig_b64 = data.get("digital_signature","")
+    try:
+      pub.verify(base64.b64decode(sig_b64), canonical(body))
+    except InvalidSignature:
+      print(f"Signature invalid: {p}"); bad = True
+  sys.exit(1 if bad else 0)
 
-
-def iter_badge_files(directory: pathlib.Path) -> Iterable[pathlib.Path]:
-    for path in sorted(directory.rglob("*.json")):
-        if path.name == "vendors.json":
-            continue
-        yield path
-
-
-def load_schema(schema_path: pathlib.Path) -> Draft202012Validator:
-    schema = json.loads(schema_path.read_text())
-    return Draft202012Validator(schema)
-
-
-def validate_badge(path: pathlib.Path, validator: Draft202012Validator, public_key_path: pathlib.Path) -> None:
-    badge = json.loads(path.read_text())
-    validator.validate(badge)
-    signature_b64 = badge.get("digital_signature")
-    if not signature_b64:
-        raise ValueError(f"{path} missing digital_signature")
-    signature = base64.b64decode(signature_b64)
-    badge_without_signature = dict(badge)
-    badge_without_signature.pop("digital_signature", None)
-    message = _canonical_json(badge_without_signature)
-    public_key = _load_public_key(public_key_path)
-    public_key.verify(signature, message)
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Validate OpenAuthCert badge registry")
-    parser.add_argument("registry", type=pathlib.Path, help="Path to registry directory")
-    parser.add_argument("schema", type=pathlib.Path, help="Path to JSON schema")
-    parser.add_argument("public_key", type=pathlib.Path, help="Path to PEM public key")
-    args = parser.parse_args()
-
-    validator = load_schema(args.schema)
-    errors = []
-    for badge_file in iter_badge_files(args.registry):
-        try:
-            validate_badge(badge_file, validator, args.public_key)
-        except Exception as exc:  # noqa: BLE001
-            errors.append(f"{badge_file}: {exc}")
-
-    if errors:
-        for error in errors:
-            print(error)
-        raise SystemExit(1)
-
-
-def _entrypoint() -> None:
-    main()
-
-
-if __name__ == "__main__":
-    _entrypoint()
+if __name__ == "__main__": main()
