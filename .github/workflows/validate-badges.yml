@@ -15,9 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install tooling dependencies
-        run: pip install -r tools/tooling/requirements.txt
-      - name: Validate badge registry
+        with: { python-version: '3.12' }
+      - run: pip install jsonschema cryptography
+      - name: Write public key
+        run: echo "${{ secrets.OAC_PUBLIC_KEY_PEM }}" > specs/badge-spec/public.pem
+      - name: Validate badges
         run: python tools/tooling/validate_badges.py registry/badge-registry specs/badge-spec/schema-v1.json specs/badge-spec/public.pem

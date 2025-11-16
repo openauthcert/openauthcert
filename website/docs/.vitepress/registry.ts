@@ -1,101 +1,104 @@
-export interface Badge {
+import type { DefaultTheme } from 'vitepress'
+
+export type Badge = {
   vendor: string
   application: string
   version: string
-  badge_type: string
+  badge_type: 'free-sso-idp' | 'free-ldap-support' | 'free-oidc-support' | 'free-saml-support' | 'multi-idp-ready'
   status: 'certified' | 'pending' | 'revoked' | 'denied'
   issued_at: string
   revoked_at?: string
   evidence_urls?: string[]
   notes?: string
   digital_signature: string
-  slug: string
-  path: string
-  revoked: boolean
+  // derived
+  slug?: string
+  path?: string
+  revoked?: boolean
 }
 
-export type RawBadge = Omit<Badge, 'slug' | 'path' | 'revoked'>
-
-type GlobModule = { default: RawBadge }
-
-type BadgeEntry = { path: string; badge: RawBadge }
-
-const hasGlob = typeof (import.meta as any).glob === 'function'
-
-const modules = hasGlob
-  ? (import.meta as any).glob<GlobModule>(
-      '../../registry/badge-registry/**/*.json',
-      { eager: true }
-    )
-  : {}
-
-const entries: BadgeEntry[] = hasGlob
-  ? Object.entries(modules).map(([key, mod]) => ({
-      path: normalizePath(key),
-      badge: mod.default
-    }))
-  : []
-
-const data: Badge[] = hasGlob
-  ? entries.map(({ path, badge }) => normalizeBadge(badge, path))
-  : []
-
-data.sort((a, b) => (a.issued_at < b.issued_at ? 1 : a.issued_at > b.issued_at ? -1 : 0))
-
-export const getAllBadges = (): Badge[] => [...data]
-
-export interface SearchParams {
+type SearchParams = {
   q?: string
   vendor?: string
   app?: string
   type?: string
   status?: string
+  sort?: 'newest' | 'vendor' | 'app' | 'version'
 }
 
-export const searchBadges = (params: SearchParams = {}): Badge[] => {
-  const query = params.q?.trim().toLowerCase()
-  return data.filter((badge) => {
-    if (query) {
-      const haystack = [
-        badge.vendor,
-        badge.application,
-        badge.version,
-        badge.badge_type,
-        badge.status,
-        badge.notes ?? ''
-      ]
-        .join(' ')
-        .toLowerCase()
-      if (!haystack.includes(query)) return false
+const files = import.meta.glob('../../../registry/badge-registry/**/*.json', { eager: true, as: 'raw' })
+
+function parse(b64: string | null | undefined) { return b64 ? atob(b64) : '' }
+
+function normalize(): Badge[] {
+  const items: Badge[] = []
+  for (const key of Object.keys(files)) {
+    const raw = (files as Record<string, string>)[key]
+    const data = JSON.parse(raw) as Badge
+    const segs = key.split('/').slice(-3) // vendor/app/version.json
+    const [vendor, application, vfile] = segs
+    const version = vfile.replace(/\.json$/, '')
+    const item: Badge = {
+      ...data,
+      vendor: data.vendor || vendor,
+      application: data.application || application,
+      version: data.version || version,
+      slug: `${vendor}/${application}/${version}`,
+      path: key.replace(/^\.\.\//, ''),
+      revoked: data.status === 'revoked'
     }
-
-    if (params.vendor && badge.vendor !== params.vendor) return false
-    if (params.app && badge.application !== params.app) return false
-    if (params.type && badge.badge_type !== params.type) return false
-    if (params.status && badge.status !== params.status) return false
-    return true
-  })
+    items.push(item)
+  }
+  return items
 }
 
-const uniqueSorted = (values: string[]): string[] => Array.from(new Set(values)).sort()
+const ALL: Badge[] = normalize()
 
-export const facets = () => ({
-  vendors: uniqueSorted(data.map((badge) => badge.vendor)),
-  apps: uniqueSorted(data.map((badge) => badge.application)),
-  types: uniqueSorted(data.map((badge) => badge.badge_type)),
-  statuses: uniqueSorted(data.map((badge) => badge.status))
-})
+export function getAllBadges(): Badge[] {
+  return ALL.slice()
+}
 
-export const normalizeBadge = (badge: RawBadge, path: string): Badge => ({
-  ...badge,
-  slug: `${badge.vendor}/${badge.application}/${badge.version}`,
-  path,
-  revoked: badge.status === 'revoked'
-})
+export function facets() {
+  const vendors = new Set<string>(), apps = new Set<string>(), types = new Set<string>(), statuses = new Set<string>()
+  for (const b of ALL) {
+    vendors.add(b.vendor); apps.add(b.application); types.add(b.badge_type); statuses.add(b.status)
+  }
+  return {
+    vendors: Array.from(vendors).sort(),
+    apps: Array.from(apps).sort(),
+    types: Array.from(types).sort(),
+    statuses: Array.from(statuses).sort()
+  }
+}
 
-function normalizePath(key: string): string {
-  return key
-    .replace(/^\.\.\//, '')
-    .replace(/^docs\//, '')
-    .replace(/^website\//, '')
+export function searchBadges(p: SearchParams = {}) {
+  let items = getAllBadges()
+  const q = (p.q || '').toLowerCase()
+  if (q) {
+    items = items.filter(b =>
+      `${b.vendor} ${b.application} ${b.version} ${b.badge_type} ${b.status}`.toLowerCase().includes(q)
+    )
+  }
+  if (p.vendor) items = items.filter(b => b.vendor === p.vendor)
+  if (p.app) items = items.filter(b => b.application === p.app)
+  if (p.type) items = items.filter(b => b.badge_type === p.type)
+  if (p.status) items = items.filter(b => b.status === p.status)
+
+  switch (p.sort) {
+    case 'vendor': items.sort((a,b)=>a.vendor.localeCompare(b.vendor)); break
+    case 'app': items.sort((a,b)=>a.application.localeCompare(b.application)); break
+    case 'version': items.sort((a,b)=>cmpSemverDesc(a.version,b.version)); break
+    default: items.sort((a,b)=>new Date(b.issued_at).getTime()-new Date(a.issued_at).getTime())
+  }
+  return items
+}
+
+function cmpSemverDesc(a: string, b: string) {
+  const pa = a.split('.').map(n=>parseInt(n,10)||0)
+  const pb = b.split('.').map(n=>parseInt(n,10)||0)
+  for (let i=0;i<Math.max(pa.length,pb.length);i++) {
+    const d = (pb[i]||0)-(pa[i]||0)
+    if (d) return d
+  }
+  return 0
 }
