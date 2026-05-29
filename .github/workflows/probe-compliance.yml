@@ -24,7 +24,7 @@ jobs:
       - name: Generate stub compliance evidence
         run: node packages/cli/dist/cli.js probe --registry registry/badge-registry --out registry/evidence
       - name: Upload evidence artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: compliance-evidence
           path: registry/evidence
