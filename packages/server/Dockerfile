@@ -1,5 +1,5 @@
 # Multi-stage build for the OpenAuthCert badge server.
-FROM node:20-slim AS builder
+FROM node:26-slim AS builder
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
@@ -18,7 +18,7 @@ COPY specs specs
 RUN pnpm --filter @openauthcert/server... build \
   && pnpm deploy --filter @openauthcert/server --prod /app
 
-FROM node:20-slim AS runtime
+FROM node:26-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /app /app
