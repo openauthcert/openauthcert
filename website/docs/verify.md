@@ -15,7 +15,7 @@ Paste a badge JSON document to confirm its Ed25519 signature and make sure it ma
 <VerifyForm />
 
 ::: tip Public key
-The verification tool uses the program public key stored at [`/public_key.pem`](/public_key.pem). Copy it to integrate automated checks in your pipelines.
+The verification tool uses the program public key stored at <a href="/public_key.pem" download><code>/public_key.pem</code></a>. Copy it to integrate automated checks in your pipelines.
 :::
 
 ::: details Sample badge JSON
