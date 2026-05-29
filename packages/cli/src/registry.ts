@@ -35,10 +35,10 @@ export function walkRegistry(root: string): RegistryEntry[] {
 }
 
 /**
- * Check that a badge's relative path follows `<vendor>/<application>/<version>.json` and that those segments match the badge's metadata.
+ * Validate that an entry's relative path uses the shape `<vendor>/<application>/<version>.json` and that those segments match the badge's `vendor`, `application`, and `version`.
  *
- * @param entry - Registry entry containing `rel` (relative path) and the parsed `badge` to validate
- * @returns A `string` describing the first detected mismatch, or `null` when the path and badge fields are consistent
+ * @param entry - Registry entry whose `rel` path and parsed `badge` will be compared
+ * @returns A descriptive error message for the first mismatch, or `null` if the path and badge fields are consistent
  */
 export function pathConsistencyError(entry: RegistryEntry): string | null {
   const parts = entry.rel.split(sep);
