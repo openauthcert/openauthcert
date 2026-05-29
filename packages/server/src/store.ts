@@ -7,7 +7,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import type { Badge } from "@openauthcert/core";
 
 // A single path segment: lowercase alnum start, then alnum/dot/dash/underscore.
@@ -24,11 +24,21 @@ export class RegistryStore {
     }
   }
 
+  private ensureWithinRoot(...parts: string[]): string {
+    const root = resolve(this.root);
+    const target = resolve(root, ...parts);
+    const rel = relative(root, target);
+    if (rel === ".." || rel.startsWith(`..${"/"}`) || rel.startsWith(`..${"\\"}`)) {
+      throw new Error("invalid path: outside registry root");
+    }
+    return target;
+  }
+
   private pathFor(vendor: string, application: string, version: string): string {
     RegistryStore.assertSegment(vendor, "vendor");
     RegistryStore.assertSegment(application, "application");
     RegistryStore.assertSegment(version, "version");
-    return join(this.root, vendor, application, `${version}.json`);
+    return this.ensureWithinRoot(vendor, application, `${version}.json`);
   }
 
   listAll(): Badge[] {
@@ -49,7 +59,7 @@ export class RegistryStore {
   listApp(vendor: string, application: string): Badge[] {
     RegistryStore.assertSegment(vendor, "vendor");
     RegistryStore.assertSegment(application, "application");
-    const dir = join(this.root, vendor, application);
+    const dir = this.ensureWithinRoot(vendor, application);
     if (!existsSync(dir)) return [];
     return readdirSync(dir)
       .filter((n) => n.endsWith(".json"))
