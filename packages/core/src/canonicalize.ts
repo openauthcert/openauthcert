@@ -1,5 +1,5 @@
 /**
- * Produces a deterministic canonical JSON string for `value` suitable for consistent signing and verification across environments.
+ * Produce a deterministic canonical JSON string for `value` suitable for consistent signing and verification across environments.
  *
  * Canonicalization rules:
  * - Object keys are sorted using the default `Array.prototype.sort` (UTF-16 code-unit order).

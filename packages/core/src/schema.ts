@@ -34,10 +34,10 @@ addFormats(ajv);
 export const validateBadge: ValidateFunction = ajv.compile(badgeSchema);
 
 /**
- * Validates a badge value against the compiled badge schema and returns readable error messages when validation fails.
+ * Validate a badge value against the compiled badge schema and produce readable errors.
  *
- * @param badge - The badge object to validate.
- * @returns `[]` if valid; otherwise an array of strings formatted as `"<instancePath> <message>"` where `instancePath` is `err.instancePath` or `"/"` and `message` is `err.message` or `"invalid"`.
+ * @param badge - The badge data to validate.
+ * @returns A list of validation error strings; each item is `"<instancePath> <message>"` where `instancePath` is `err.instancePath` or `"/"` and `message` is `err.message` or `"invalid"`. Returns an empty array when the badge is valid.
  */
 export function schemaErrors(badge: unknown): string[] {
   if (validateBadge(badge)) return [];

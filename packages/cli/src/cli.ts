@@ -200,9 +200,10 @@ function cmdRevoke(positionals: string[], values: Record<string, unknown>): void
 }
 
 /**
- * Generates dated stub evidence summaries for certified badges in a registry.
+ * Generate dated stub evidence summaries for all certified badges in a registry.
  *
- * Writes a `summary.json` file for each badge with `status === "certified"` into
+ * Writes a `summary.json` file (stub payload) for each badge whose `status` is
+ * `"certified"` into a directory structured as
  * `<out>/<vendor>/<application>/<version>/<YYYYMMDD>/summary.json`.
  *
  * The `values` map may include:
