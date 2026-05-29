@@ -42,7 +42,7 @@ This canonical form is what the [verify tool](/verify) reconstructs before check
 
 ## Digital signatures
 
-- The initiative publishes a global Ed25519 public key at [`/public_key.pem`](/public_key.pem).
+- The initiative publishes a global Ed25519 public key at <a href="/public_key.pem" download><code>/public_key.pem</code></a>.
 - Vendors sign badge payloads with the corresponding private key after review.
 - The `digital_signature` field stores a Base64-encoded Ed25519 signature over the canonical payload.
 - Revocations require a new signature after updating `status` and `revoked_at`.

@@ -10,7 +10,7 @@ OpenAuthCert badges are designed to be portable proof objects. Vendors can embed
 
 - Badges are signed with **Ed25519**, providing strong security with a compact key size.
 - The canonical payload excludes the `digital_signature` field and is serialized with sorted keys.
-- The public key is published at [`/public_key.pem`](/public_key.pem) for anyone to use.
+- The public key is published at <a href="/public_key.pem" download><code>/public_key.pem</code></a> for anyone to use.
 - Signatures are verified using the same algorithm in browsers (Web Crypto) and in tooling.
 
 ## Verifying badges on the command line
