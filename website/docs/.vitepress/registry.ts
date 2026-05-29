@@ -18,6 +18,13 @@ type SearchParams = {
 
 const files = import.meta.glob('../../../registry/badge-registry/**/*.json', { eager: true, query: '?raw', import: 'default' })
 
+/**
+ * Parse the bundled registry JSON files and produce normalized Badge objects with derived UI/navigation fields.
+ *
+ * Each returned Badge is populated from the parsed file content and supplemented with fallback values and derived properties such as `vendor`, `application`, `version`, `slug`, `path`, and `revoked`.
+ *
+ * @returns An array of normalized `Badge` objects extracted from the registry files
+ */
 function normalize(): Badge[] {
   const items: Badge[] = []
   for (const key of Object.keys(files)) {

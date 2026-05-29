@@ -2,6 +2,15 @@
 import { readFileSync } from "node:fs";
 import { buildApp } from "./app.js";
 
+/**
+ * Load the public key PEM used by the badge server.
+ *
+ * Retrieves the PEM from the `OAC_PUBLIC_KEY_PEM` environment variable when present;
+ * otherwise reads and returns the file at `OAC_PUBLIC_KEY_PEM_PATH`, defaulting to
+ * `specs/badge-spec/public.pem`.
+ *
+ * @returns The public key PEM as a string loaded from the environment or file system.
+ */
 function loadPublicKeyPem(): string {
   const inline = process.env["OAC_PUBLIC_KEY_PEM"];
   if (inline) return inline;

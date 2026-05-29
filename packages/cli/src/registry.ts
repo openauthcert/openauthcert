@@ -11,7 +11,12 @@ export interface RegistryEntry {
   badge: Badge;
 }
 
-/** Recursively collect all `*.json` badge files under `root`. */
+/**
+ * Collects all badge JSON files under the given registry root.
+ *
+ * @param root - Absolute or relative path to the registry root directory to traverse
+ * @returns An array of `RegistryEntry` objects, one per discovered `*.json` badge file, containing the file's absolute path (`file`), its path relative to `root` (`rel`), and the parsed `badge` object
+ */
 export function walkRegistry(root: string): RegistryEntry[] {
   const out: RegistryEntry[] = [];
   const visit = (dir: string): void => {
@@ -30,9 +35,10 @@ export function walkRegistry(root: string): RegistryEntry[] {
 }
 
 /**
- * Verify that a badge lives at the canonical nested path
- * `<vendor>/<application>/<version>.json` and that those path segments match
- * the badge's own fields. Returns an error string, or null when consistent.
+ * Check that a badge's relative path follows `<vendor>/<application>/<version>.json` and that those segments match the badge's metadata.
+ *
+ * @param entry - Registry entry containing `rel` (relative path) and the parsed `badge` to validate
+ * @returns A `string` describing the first detected mismatch, or `null` when the path and badge fields are consistent
  */
 export function pathConsistencyError(entry: RegistryEntry): string | null {
   const parts = entry.rel.split(sep);

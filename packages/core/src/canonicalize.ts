@@ -1,23 +1,12 @@
 /**
- * Deterministic JSON canonicalization for OpenAuthCert badges.
+ * Produce a deterministic canonical JSON string for `value` suitable for consistent signing and verification across environments.
  *
- * THE LOAD-BEARING INVARIANT: the CLI signer, the badge server, the CI
- * validator, and the in-browser VerifyForm must all turn a badge into the
- * EXACT SAME bytes, or Ed25519 signatures will not verify across surfaces.
+ * Canonicalization rules:
+ * - Object keys are sorted using the default `Array.prototype.sort` (UTF-16 code-unit order).
+ * - Array element order is preserved.
+ * - Primitives are serialized with `JSON.stringify`.
  *
- * This module is intentionally PURE — it imports nothing from `node:*` so it
- * can be bundled into the browser (via the `@openauthcert/core/browser`
- * subpath export) unchanged. Both Node and the browser feed the returned
- * string through UTF-8 encoding (`Buffer.from(str, 'utf8')` /
- * `new TextEncoder().encode(str)`), which produce identical bytes.
- *
- * Rules:
- *  - Object keys are sorted with the default `Array.prototype.sort`
- *    (UTF-16 code-unit order) — NOT `localeCompare`, which is locale dependent.
- *  - Arrays preserve their order.
- *  - Primitives are serialized with standard `JSON.stringify` (raw UTF-8, no
- *    `\uXXXX` ASCII escaping).
- *  - The `digital_signature` field is excluded from the signed body.
+ * @returns A stable JSON string representation of `value` following the rules above.
  */
 
 export function canonicalize(value: unknown): string {
@@ -36,8 +25,10 @@ export function canonicalize(value: unknown): string {
 }
 
 /**
- * Produce the canonical string that is actually signed/verified: the badge
- * with its `digital_signature` field removed, canonicalized.
+ * Create the canonical JSON string used for signing and verification by removing the badge's `digital_signature` field and canonicalizing the remainder.
+ *
+ * @param badge - The badge object from which `digital_signature` will be excluded before canonicalization
+ * @returns The deterministic canonical JSON string of the badge without its `digital_signature` field
  */
 export function canonicalBytesInput(badge: object): string {
   const { digital_signature: _signature, ...body } = badge as Record<

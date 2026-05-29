@@ -18,6 +18,13 @@ export interface AppOptions {
   adminToken?: string;
 }
 
+/**
+ * Compares two strings for equality using a timing-attack resistant (constant-time) check.
+ *
+ * @param a - First string to compare
+ * @param b - Second string to compare
+ * @returns `true` if `a` and `b` are identical and have the same length, `false` otherwise
+ */
 function constantTimeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
   const bufB = Buffer.from(b);
@@ -25,6 +32,19 @@ function constantTimeEqual(a: string, b: string): boolean {
   return timingSafeEqual(bufA, bufB);
 }
 
+/**
+ * Create a Fastify application configured as an OpenAuthCert badge server.
+ *
+ * The returned app exposes health, listing, issue, revoke, and verify endpoints
+ * and mounts a RegistryStore at the provided registry root.
+ *
+ * @param opts - Configuration for the server:
+ *   - `registryRoot`: filesystem path used by the registry store.
+ *   - `publicKeyPem`: PEM-encoded public key used to verify badge signatures.
+ *   - `privateSeedB64` (optional): base64 seed used to derive the signing key; when omitted, signing endpoints will return a 503.
+ *   - `adminToken` (optional): bearer token required to access admin-protected endpoints (`/issue`, `/revoke`); when omitted those endpoints will reject authorization attempts.
+ * @returns A configured Fastify instance serving the OpenAuthCert badge API
+ */
 export function buildApp(opts: AppOptions): FastifyInstance {
   const app = Fastify({ logger: false });
   const store = new RegistryStore(opts.registryRoot);
