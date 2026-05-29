@@ -6,36 +6,35 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  issues: write
-  actions: read
-  checks: read
-  statuses: read
-  pull-requests: read
-  id-token: write
+  contents: write
 
 jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: pnpm/action-setup@v4
         with:
-          python-version: '3.12'
-      - name: Install tooling dependencies
-        run: pip install -r tools/tooling/requirements.txt
-      - name: Generate probe evidence
-        run: python tools/tooling/probe_compliance.py registry/badge-registry registry/evidence
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Build core + CLI
+        run: pnpm --filter @openauthcert/cli... build
+      - name: Generate stub compliance evidence
+        run: node packages/cli/dist/cli.js probe --registry registry/badge-registry --out registry/evidence
       - name: Upload evidence artifacts
         uses: actions/upload-artifact@v4
         with:
           name: compliance-evidence
           path: registry/evidence
-      - name: Summarize results
+      - name: Summarize
         run: |
-          echo "## Compliance summary" >> $GITHUB_STEP_SUMMARY
-          echo "Generated stub compliance results for published badges." >> $GITHUB_STEP_SUMMARY
-      - name: Commit evidence
+          echo "## Compliance summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "Generated stub compliance results for certified badges." >> "$GITHUB_STEP_SUMMARY"
+      - name: Commit evidence to evidence-data branch
         if: always()
         run: |
           git config user.name "oac-bot"
@@ -44,5 +43,3 @@ jobs:
           git add registry/evidence || true
           git commit -m "evidence: $(date -u +%Y-%m-%dT%H:%M:%SZ)" || exit 0
           git push -f origin evidence-data
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,13 @@
+{
+  "vendor": "acme-cloud",
+  "application": "cloud-sso",
+  "version": "1.0.0",
+  "badge_type": "free-oidc-support",
+  "status": "certified",
+  "issued_at": "2024-05-01T12:00:00Z",
+  "evidence_urls": [
+    "https://id.acme.test/docs/oidc"
+  ],
+  "notes": "Initial certification release",
+  "digital_signature": "gLTZxpXweyMEOjAU5mCDtvFvXhi6BXJc2UdRqIQ7jU/J/mp+TfkgzcRR3v2JHaxmTEPAIYBTwk+UioqycJ2kBg=="
+}

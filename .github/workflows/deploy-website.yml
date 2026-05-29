@@ -1,41 +1,54 @@
-name: Build and deploy website
+name: deploy-website
+
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
       - 'website/**'
-      - 'docs/**'
       - 'registry/**'
       - 'specs/**'
+      - 'packages/core/**'
+  workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
   id-token: write
 
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '20' }
-      - name: Install website dependencies
-        working-directory: website
-        run: npm ci
-      - name: Validate registry data
-        run: node website/scripts/check-registry-build.ts
-      - name: Build site
-        working-directory: website
-        run: npm run build
-      - uses: actions/configure-pages@v4
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: pnpm/action-setup@v4
         with:
-          path: website/.vitepress/dist
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Build core + CLI
+        run: pnpm --filter @openauthcert/cli... build
+      - name: Validate registry before publishing
+        run: node packages/cli/dist/cli.js validate --pub specs/badge-spec/public.pem
+      - name: Build site
+        run: pnpm --filter openauthcert-site build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/docs/.vitepress/dist
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy to GitHub Pages
+      - id: deployment
         uses: actions/deploy-pages@v4

@@ -1,0 +1,31 @@
+{
+  "name": "@openauthcert/core",
+  "version": "0.0.0",
+  "description": "Shared canonicalization, Ed25519 crypto, badge types, and JSON Schema validation for OpenAuthCert.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/index.browser.d.ts",
+      "import": "./dist/index.browser.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "embed-schema": "node scripts/embed-schema.mjs",
+    "build": "node scripts/embed-schema.mjs && tsc -b",
+    "test": "node scripts/embed-schema.mjs && vitest run"
+  },
+  "dependencies": {
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "typescript": "5.6.3",
+    "vitest": "2.1.8"
+  }
+}

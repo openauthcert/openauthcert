@@ -1,4 +1,0 @@
-jsonschema
-pynacl
-cryptography
-requests

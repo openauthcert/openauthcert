@@ -7,17 +7,24 @@ on:
     paths:
       - 'registry/**'
       - 'specs/badge-spec/**'
-      - 'tools/tooling/**'
+      - 'packages/**'
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - run: pip install jsonschema cryptography
-      - name: Write public key
-        run: echo "${{ secrets.OAC_PUBLIC_KEY_PEM }}" > specs/badge-spec/public.pem
-      - name: Validate badges
-        run: python tools/tooling/validate_badges.py registry/badge-registry specs/badge-spec/schema-v1.json specs/badge-spec/public.pem
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Build core + CLI
+        run: pnpm --filter @openauthcert/cli... build
+      # The public key is committed (it is not secret) and is the single source
+      # of truth for verification.
+      - name: Validate registry (schema + signature + path consistency)
+        run: node packages/cli/dist/cli.js validate --pub specs/badge-spec/public.pem

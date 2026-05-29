@@ -1,6 +1,15 @@
-__pycache__/
-*.pyc
-website/node_modules/
-website/.vitepress/dist/
+node_modules/
+**/dist/
+*.tsbuildinfo
 .env
 .DS_Store
+
+# VitePress build output
+website/docs/.vitepress/dist/
+website/docs/.vitepress/cache/
+
+# Generated: copied from specs/badge-spec/public.pem at build time — never hand-edit
+website/docs/public/public_key.pem
+
+# Generated from specs/badge-spec/schema-v1.json by core's embed-schema script
+packages/core/src/badge-schema.generated.ts

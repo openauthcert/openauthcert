@@ -47,4 +47,4 @@ This canonical form is what the [verify tool](/verify) reconstructs before check
 - The `digital_signature` field stores a Base64-encoded Ed25519 signature over the canonical payload.
 - Revocations require a new signature after updating `status` and `revoked_at`.
 
-For implementation details, see the [`tools/tooling/sign_verify.py`](https://github.com/openauthcert/openauthcert/blob/main/tools/tooling/sign_verify.py) CLI helper.
+For implementation details, see the [`oac` CLI](https://github.com/openauthcert/openauthcert/blob/main/packages/cli/src/cli.ts) and the shared [`@openauthcert/core`](https://github.com/openauthcert/openauthcert/blob/main/packages/core/src/canonicalize.ts) canonicalization.
