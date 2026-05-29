@@ -18,7 +18,7 @@
     "site:build": "pnpm --filter openauthcert-site build"
   },
   "devDependencies": {
-    "typescript": "5.6.3"
+    "typescript": "6.0.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["esbuild"]
