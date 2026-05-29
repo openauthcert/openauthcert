@@ -1,0 +1,26 @@
+{
+  "name": "openauthcert",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Open Authentication Certification Initiative — signed, paywall-free SSO/IdP certification badges.",
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter \"./packages/*\" build",
+    "test": "pnpm -r --filter \"./packages/*\" test",
+    "lint": "tsc -b packages/core packages/cli packages/server",
+    "oac": "node packages/cli/dist/cli.js",
+    "validate": "node packages/cli/dist/cli.js validate --pub specs/badge-spec/public.pem",
+    "site:dev": "pnpm --filter openauthcert-site dev",
+    "site:build": "pnpm --filter openauthcert-site build"
+  },
+  "devDependencies": {
+    "typescript": "5.6.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

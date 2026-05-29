@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import publicKeyPem from '../../../../public/public_key.pem?raw'
+import { canonicalize } from '@openauthcert/core/browser'
+import publicKeyPem from '../../../public/public_key.pem?raw'
 
 interface VerificationState {
   status: 'idle' | 'valid' | 'invalid' | 'error'
@@ -63,21 +64,6 @@ async function loadPublicKey() {
   }
   const binary = pemToBytes(publicKeyPem)
   return globalThis.crypto.subtle.importKey('spki', binary, { name: 'Ed25519' }, true, ['verify'])
-}
-
-function canonicalize(value: unknown): string {
-  if (value === null || typeof value !== 'object') {
-    return JSON.stringify(value)
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => canonicalize(item)).join(',')}]`
-  }
-  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
-    a.localeCompare(b)
-  )
-  return `{${entries
-    .map(([key, val]) => `${JSON.stringify(key)}:${canonicalize(val)}`)
-    .join(',')}}`
 }
 
 function pemToBytes(pem: string): ArrayBuffer {

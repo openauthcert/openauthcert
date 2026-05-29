@@ -1,0 +1,33 @@
+name: ci
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths:
+      - 'packages/**'
+      - 'specs/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'tsconfig.base.json'
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'specs/**'
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Build packages
+        run: pnpm -r --filter "./packages/*" build
+      - name: Test packages
+        run: pnpm -r --filter "./packages/*" test

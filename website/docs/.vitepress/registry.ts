@@ -1,17 +1,7 @@
-import type { DefaultTheme } from 'vitepress'
+import type { Badge as CoreBadge } from '@openauthcert/core/browser'
 
-export type Badge = {
-  vendor: string
-  application: string
-  version: string
-  badge_type: 'free-sso-idp' | 'free-ldap-support' | 'free-oidc-support' | 'free-saml-support' | 'multi-idp-ready'
-  status: 'certified' | 'pending' | 'revoked' | 'denied'
-  issued_at: string
-  revoked_at?: string
-  evidence_urls?: string[]
-  notes?: string
-  digital_signature: string
-  // derived
+// The registry's badge type is the canonical core type plus derived UI fields.
+export type Badge = CoreBadge & {
   slug?: string
   path?: string
   revoked?: boolean
@@ -26,10 +16,15 @@ type SearchParams = {
   sort?: 'newest' | 'vendor' | 'app' | 'version'
 }
 
-const files = import.meta.glob('../../../registry/badge-registry/**/*.json', { eager: true, as: 'raw' })
+const files = import.meta.glob('../../../registry/badge-registry/**/*.json', { eager: true, query: '?raw', import: 'default' })
 
-function parse(b64: string | null | undefined) { return b64 ? atob(b64) : '' }
-
+/**
+ * Parse the bundled registry JSON files and produce normalized Badge objects with derived UI/navigation fields.
+ *
+ * Each returned Badge is populated from the parsed file content and supplemented with fallback values and derived properties such as `vendor`, `application`, `version`, `slug`, `path`, and `revoked`.
+ *
+ * @returns An array of normalized `Badge` objects extracted from the registry files
+ */
 function normalize(): Badge[] {
   const items: Badge[] = []
   for (const key of Object.keys(files)) {

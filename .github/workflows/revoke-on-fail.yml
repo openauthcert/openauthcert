@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       badge_path:
-        description: 'Path to badge JSON to revoke (e.g. registry/badge-registry/vendor_app_version.json)'
+        description: 'Badge JSON to revoke (e.g. registry/badge-registry/<vendor>/<application>/<version>.json)'
         required: true
       notes:
         description: 'Reason for revocation'
@@ -12,53 +12,40 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   revoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
-          python-version: '3.12'
-      - name: Install tooling dependencies
-        run: pip install -r tools/tooling/requirements.txt
-      - name: Update badge metadata
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Build core + CLI
+        run: pnpm --filter @openauthcert/cli... build
+      - name: Write signing key
+        run: printf '%s' "${{ secrets.OAC_PRIVATE_KEY_B64 }}" > "$RUNNER_TEMP/oac_seed.b64"
+      - name: Revoke and re-sign
         env:
           BADGE_PATH: ${{ github.event.inputs.badge_path }}
           NOTES: ${{ github.event.inputs.notes }}
         run: |
-          python - <<'PY'
-import datetime as dt
-import json
-import os
-from pathlib import Path
-
-badge_path = Path(os.environ['BADGE_PATH'])
-badge = json.loads(badge_path.read_text())
-badge['status'] = 'revoked'
-badge['revoked_at'] = dt.datetime.utcnow().isoformat() + 'Z'
-notes = os.environ.get('NOTES')
-if notes:
-    badge['notes'] = notes
-badge.pop('digital_signature', None)
-badge_path.write_text(json.dumps(badge, indent=2, sort_keys=True) + '\n')
-PY
-      - name: Write private key material
-        run: |
-          echo "${{ secrets.OAC_PRIVATE_KEY_B64 }}" > /tmp/oac_private.b64
-      - name: Re-sign badge
-        env:
-          BADGE_PATH: ${{ github.event.inputs.badge_path }}
-        run: |
-          python tools/tooling/sign_verify.py sign "$BADGE_PATH" /tmp/oac_private.b64
-      - name: Commit and push revocation
-        env:
-          BADGE_PATH: ${{ github.event.inputs.badge_path }}
+          if [ -n "$NOTES" ]; then
+            node packages/cli/dist/cli.js revoke "$BADGE_PATH" \
+              --seed-b64 "@$RUNNER_TEMP/oac_seed.b64" --notes "$NOTES"
+          else
+            node packages/cli/dist/cli.js revoke "$BADGE_PATH" \
+              --seed-b64 "@$RUNNER_TEMP/oac_seed.b64"
+          fi
+      - name: Verify revocation
+        run: node packages/cli/dist/cli.js verify "${{ github.event.inputs.badge_path }}" --pub specs/badge-spec/public.pem
+      - name: Commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
-          git add "$BADGE_PATH"
-          git commit -m "Revoke badge $BADGE_PATH"
+          git add "${{ github.event.inputs.badge_path }}"
+          git commit -m "Revoke badge ${{ github.event.inputs.badge_path }}"
           git push

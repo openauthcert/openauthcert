@@ -38,8 +38,7 @@ Issues, clarifications, and policy discussions happen in [GitHub Issues](https:/
 
 Before the website deploys, CI runs:
 
-- Schema validation on badge files.
-- The registry build check (`node website/scripts/check-registry-build.ts`).
+- Registry validation: `oac validate` checks every badge's JSON Schema, Ed25519 signature, and that its file lives at `<vendor>/<application>/<version>.json`.
 - Static site build.
 
 Any failure blocks deployment until addressed.

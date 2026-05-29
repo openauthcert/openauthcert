@@ -15,15 +15,15 @@ OpenAuthCert badges are designed to be portable proof objects. Vendors can embed
 
 ## Verifying badges on the command line
 
-The repository includes a helper script that demonstrates signing and verification:
+The repository includes the `oac` CLI (`packages/cli`) for signing and verification:
 
 ```bash
-python tools/tooling/sign_verify.py verify \
-  --public-key website/public/public_key.pem \
-  --badge registry/badge-registry/acme-cloud/cloud-sso/1.0.0.json
+node packages/cli/dist/cli.js verify \
+  registry/badge-registry/acme-cloud/cloud-sso/1.0.0.json \
+  --pub specs/badge-spec/public.pem
 ```
 
-The script reads the badge, canonicalizes it, and verifies the signature against the PEM key. Use it as a reference for your own automation.
+It reads the badge, canonicalizes it with the shared `@openauthcert/core` algorithm, and verifies the signature against the PEM key — the exact same canonicalization the browser verifier uses. Use it as a reference for your own automation.
 
 ## Embedding badges with JSON-LD
 

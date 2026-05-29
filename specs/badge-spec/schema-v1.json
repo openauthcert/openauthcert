@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://openauthcert.dev/schema/badge/v1",
+  "$id": "https://openauthcert.org/schema/badge/v1",
   "title": "OpenAuthCert Badge",
   "type": "object",
   "additionalProperties": false,
