@@ -83,7 +83,8 @@
         },
         "ldap": {
           "type": "string",
-          "description": "LDAP endpoint as host:port (TCP reachability is probed)."
+          "pattern": "^[A-Za-z0-9.-]+(:[0-9]{1,5})?$",
+          "description": "LDAP endpoint as host or host:port (TCP reachability is probed; port defaults to 389)."
         },
         "docs": {
           "type": "string",

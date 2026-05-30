@@ -21,7 +21,7 @@ Certification is an ongoing commitment, not a one-time stamp. Three mechanisms k
 
 1. **Expiry / renewal.** Every badge carries a signed `expires_at`, set to **12 months** after issue. Past that, verifiers and the registry treat it as expired until the vendor opens a renewal PR for re-validation.
 2. **Nightly compliance probe.** A scheduled job (`probe-compliance.yml`) re-tests the live endpoints declared in each badge's `checks` block — the OIDC discovery document, SAML metadata, LDAP reachability, and the public docs (scanned for paywall regressions). Results are recorded as dated evidence on the `evidence-data` branch.
-3. **Automatic revocation after 3 strikes.** A per-badge failure counter persists across runs. If a certified vendor fails its checks **three consecutive days**, the probe re-signs the badge as `revoked` and opens a pull request against `main`. The three-strike gate prevents a transient outage from revoking a legitimate certification.
+3. **Automatic revocation after 3 strikes.** A per-badge failure counter persists across runs. If a certified vendor fails its checks on **three consecutive probe runs**, the probe re-signs the badge as `revoked` and opens a pull request against `main`. The three-strike gate prevents a transient outage from revoking a legitimate certification.
 
 ## Revocation triggers
 

@@ -11,14 +11,19 @@ import type { Badge, EffectiveStatus } from "./types.js";
 /** Default certification validity window applied at issue/sign time. */
 export const DEFAULT_VALIDITY_MONTHS = 12;
 
-/** True when `expires_at` is in the past relative to `now` (ms epoch). */
+/**
+ * True when `expires_at` is in the past relative to `now` (ms epoch).
+ * Fails **closed**: a missing or unparseable `expires_at` is treated as expired,
+ * so a malformed badge can never appear indefinitely valid.
+ */
 export function isExpired(
   badge: Pick<Badge, "expires_at">,
   now: number = Date.now(),
 ): boolean {
-  if (!badge.expires_at) return false;
+  if (!badge.expires_at) return true;
   const expiry = Date.parse(badge.expires_at);
-  return Number.isFinite(expiry) && now >= expiry;
+  if (!Number.isFinite(expiry)) return true;
+  return now >= expiry;
 }
 
 /**
@@ -47,7 +52,26 @@ export function isCurrentlyCertified(
  * to a trailing "Z" (UTC) like the rest of the badge timestamps.
  */
 export function addMonthsIso(iso: string, months: number): string {
-  const d = new Date(iso);
-  d.setUTCMonth(d.getUTCMonth() + months);
-  return d.toISOString().replace(/\.\d{3}Z$/, "Z");
+  const src = new Date(iso);
+  if (!Number.isFinite(src.getTime())) {
+    throw new Error(`invalid ISO timestamp: ${iso}`);
+  }
+  const day = src.getUTCDate();
+  // Build the target month at day 1 (always valid), then clamp the day to that
+  // month's length so e.g. Jan 31 + 1 month → Feb 28/29 instead of overflowing.
+  const target = new Date(
+    Date.UTC(
+      src.getUTCFullYear(),
+      src.getUTCMonth() + months,
+      1,
+      src.getUTCHours(),
+      src.getUTCMinutes(),
+      src.getUTCSeconds(),
+    ),
+  );
+  const lastDay = new Date(
+    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  target.setUTCDate(Math.min(day, lastDay));
+  return target.toISOString().replace(/\.\d{3}Z$/, "Z");
 }

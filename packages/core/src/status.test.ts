@@ -45,4 +45,17 @@ describe("certification lifecycle", () => {
   it("adds months in UTC with trailing Z", () => {
     expect(addMonthsIso("2024-05-01T12:00:00Z", 12)).toBe("2025-05-01T12:00:00Z");
   });
+
+  it("clamps to month end instead of overflowing", () => {
+    expect(addMonthsIso("2021-01-31T12:00:00Z", 1)).toBe("2021-02-28T12:00:00Z");
+    expect(addMonthsIso("2020-01-31T12:00:00Z", 1)).toBe("2020-02-29T12:00:00Z");
+  });
+
+  it("fails closed for missing or unparseable expiry", () => {
+    expect(isExpired({ expires_at: "" })).toBe(true);
+    expect(isExpired({ expires_at: "not-a-date" })).toBe(true);
+    expect(
+      effectiveStatus({ status: "certified", expires_at: "garbage" }, before),
+    ).toBe("expired");
+  });
 });

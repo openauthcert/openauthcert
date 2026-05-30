@@ -38,6 +38,20 @@ function nowIso(): string {
   return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
+/** Parse a CLI numeric flag, requiring a positive integer (rejects NaN/0/negatives/fractions). */
+function parsePositiveInt(
+  value: unknown,
+  flag: string,
+  fallback: number,
+): number {
+  if (value === undefined) return fallback;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1) {
+    fail(`${flag} must be a positive integer`);
+  }
+  return n;
+}
+
 /**
  * Write an error message to stderr and exit the process with code 1.
  *
@@ -115,7 +129,11 @@ function cmdSign(positionals: string[], values: Record<string, unknown>): void {
   // Default the certification window if the author didn't set one explicitly.
   if (!badge.issued_at) badge.issued_at = nowIso();
   if (!badge.expires_at) {
-    const ttl = Number(values["ttl-months"] ?? DEFAULT_VALIDITY_MONTHS);
+    const ttl = parsePositiveInt(
+      values["ttl-months"],
+      "--ttl-months",
+      DEFAULT_VALIDITY_MONTHS,
+    );
     badge.expires_at = addMonthsIso(badge.issued_at, ttl);
   }
   // Validate the body with a placeholder signature, since the real one is set below.
@@ -225,7 +243,11 @@ async function cmdProbe(values: Record<string, unknown>): Promise<void> {
   const out = (values["out"] as string | undefined) ?? "registry/evidence";
   const statePath =
     (values["state"] as string | undefined) ?? join(out, "probe-state.json");
-  const threshold = Number(values["threshold"] ?? DEFAULT_REVOKE_THRESHOLD);
+  const threshold = parsePositiveInt(
+    values["threshold"],
+    "--threshold",
+    DEFAULT_REVOKE_THRESHOLD,
+  );
 
   const { results, toRevoke } = await runProbe({
     registry,
@@ -240,9 +262,11 @@ async function cmdProbe(values: Record<string, unknown>): Promise<void> {
       `${tally("pass")} pass, ${tally("fail")} fail, ${tally("skip")} skip`,
   );
 
+  // Always rewrite the list (empty array when none) so stale slugs from a prior
+  // run can never drive automation.
+  const listPath = join(out, "revoke-list.json");
+  writeFileSync(listPath, JSON.stringify(toRevoke, null, 2) + "\n");
   if (toRevoke.length) {
-    const listPath = join(out, "revoke-list.json");
-    writeFileSync(listPath, JSON.stringify(toRevoke, null, 2) + "\n");
     console.log(
       `${toRevoke.length} badge(s) reached the revocation threshold (${threshold}) -> ${listPath}`,
     );

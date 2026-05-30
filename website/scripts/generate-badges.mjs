@@ -2,8 +2,8 @@
 // docs/public/badges/<vendor>/<application>/<version>.svg. The status is the
 // *effective* status (certified flips to "expired" once expires_at passes), so
 // rebuilding the site nightly keeps embedded badges current.
-import { readdirSync, statSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, lstatSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { effectiveStatus } from "@openauthcert/core";
 
@@ -52,19 +52,30 @@ function svg(status) {
 function walk(dir, found = []) {
   for (const name of readdirSync(dir).sort()) {
     const full = join(dir, name);
-    if (statSync(full).isDirectory()) walk(full, found);
+    const stat = lstatSync(full); // lstat: never follow symlinks out of the tree
+    if (stat.isSymbolicLink()) continue;
+    if (stat.isDirectory()) walk(full, found);
     else if (name.endsWith(".json")) found.push(full);
   }
   return found;
 }
 
+const outBase = resolve(outRoot);
 let count = 0;
 for (const file of walk(registryRoot)) {
   const badge = JSON.parse(readFileSync(file, "utf8"));
   const status = effectiveStatus(badge);
-  const dir = join(outRoot, badge.vendor, badge.application);
+  // Derive path segments from the trusted on-disk path, not badge fields.
+  const parts = relative(registryRoot, file).split(sep);
+  if (parts.length !== 3) continue;
+  const [vendor, application, filename] = parts;
+  const version = filename.replace(/\.json$/, "");
+  const dir = resolve(outBase, vendor, application);
+  if (dir !== outBase && !dir.startsWith(outBase + sep)) {
+    throw new Error(`refusing to write outside ${outRoot}: ${relative(registryRoot, file)}`);
+  }
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, `${badge.version}.svg`), svg(status));
+  writeFileSync(join(dir, `${version}.svg`), svg(status));
   count += 1;
 }
 console.log(`generated ${count} status badge SVG(s) -> ${outRoot}`);

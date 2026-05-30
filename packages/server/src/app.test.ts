@@ -81,6 +81,26 @@ describe("badge server", () => {
     await app.close();
   });
 
+  it("defaults issued_at and expires_at on /issue when omitted", async () => {
+    const app = await newApp(root);
+    const { issued_at, expires_at, ...withoutDates } = baseBadge;
+    void issued_at;
+    void expires_at;
+    await app.inject({
+      method: "POST",
+      url: "/issue",
+      headers: { authorization: ADMIN },
+      payload: withoutDates,
+    });
+    const list = await app.inject({ method: "GET", url: "/badges" });
+    const issued = (list.json() as { items: Badge[] }).items[0]!;
+    expect(issued.issued_at).toBeTruthy();
+    expect(issued.expires_at).toBeTruthy();
+    // Default window is 12 months out from issuance.
+    expect(Date.parse(issued.expires_at)).toBeGreaterThan(Date.parse(issued.issued_at));
+    await app.close();
+  });
+
   it("revokes a badge and sets revoked_at", async () => {
     const app = await newApp(root);
     await app.inject({

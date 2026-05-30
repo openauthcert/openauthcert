@@ -124,14 +124,18 @@ export async function probeBadge(
     );
   }
   if (c.ldap) {
-    const [host, portStr] = c.ldap.split(":");
-    const port = Number(portStr ?? "389");
-    const ok = host ? await tcp(host, port) : false;
-    checks.push({
-      name: "ldap",
-      ok,
-      detail: ok ? "tcp reachable" : `cannot reach ${c.ldap}`,
-    });
+    const ldap = c.ldap;
+    checks.push(
+      await guard("ldap", async () => {
+        const [host, portStr] = ldap.split(":");
+        const port = Number(portStr ?? "389");
+        if (!host || !Number.isInteger(port) || port < 1 || port > 65535) {
+          return { ok: false, detail: `invalid ldap target: ${ldap}` };
+        }
+        const ok = await tcp(host, port);
+        return { ok, detail: ok ? "tcp reachable" : `cannot reach ${ldap}` };
+      }),
+    );
   }
   if (c.docs) {
     checks.push(
@@ -235,8 +239,13 @@ export async function runProbe(opts: RunProbeOptions): Promise<RunProbeOutcome> 
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "summary.json"), JSON.stringify(result, null, 2) + "\n");
 
+    // Enqueue revocation only on the run that first crosses the threshold, so
+    // the workflow stays idempotent and doesn't reopen duplicate revoke PRs.
+    const previousFailures = state[result.slug]?.consecutiveFailures ?? 0;
     const entry = updateState(state, result);
-    if (entry.consecutiveFailures >= threshold) toRevoke.push(result.slug);
+    if (previousFailures < threshold && entry.consecutiveFailures >= threshold) {
+      toRevoke.push(result.slug);
+    }
   }
 
   mkdirSync(dirname(opts.statePath), { recursive: true });

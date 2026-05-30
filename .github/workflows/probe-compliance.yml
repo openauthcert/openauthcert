@@ -29,7 +29,7 @@ jobs:
         run: |
           mkdir -p registry/evidence
           git fetch origin evidence-data || true
-          git show origin/evidence-data:probe-state.json > registry/evidence/probe-state.json 2>/dev/null \
+          git show origin/evidence-data:registry/evidence/probe-state.json > registry/evidence/probe-state.json 2>/dev/null \
             || echo '{}' > registry/evidence/probe-state.json
 
       - name: Probe live compliance
@@ -58,8 +58,13 @@ jobs:
           OAC_PRIVATE_KEY_B64: ${{ secrets.OAC_PRIVATE_KEY_B64 }}
           GH_TOKEN: ${{ github.token }}
         run: |
+          # revoke-list.json is always written; skip when it's an empty array.
+          if [ "$(node -e "process.stdout.write(String(JSON.parse(require('fs').readFileSync('registry/evidence/revoke-list.json','utf8')).length))")" = "0" ]; then
+            echo "no badges crossed the revocation threshold"
+            exit 0
+          fi
           if [ -z "$OAC_PRIVATE_KEY_B64" ]; then
-            echo "::warning::revoke-list present but OAC_PRIVATE_KEY_B64 is not set; skipping auto-revocation"
+            echo "::warning::revocations pending but OAC_PRIVATE_KEY_B64 is not set; skipping auto-revocation"
             exit 0
           fi
           # Work from a clean copy of main (the evidence checkout above is throwaway).
@@ -72,7 +77,7 @@ jobs:
             path="registry/badge-registry/$slug.json"
             node packages/cli/dist/cli.js revoke "$path" \
               --seed-b64 "@$RUNNER_TEMP/seed.b64" \
-              --notes "Automated revocation: failed nightly compliance probe 3 days in a row."
+              --notes "Automated revocation: failed compliance probe on 3 consecutive runs."
             git add "$path"
           done
           git config user.name "oac-bot"
