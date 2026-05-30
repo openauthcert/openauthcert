@@ -1,0 +1,23 @@
+{
+  "vendor": "acme-cloud",
+  "application": "cloud-sso",
+  "version": "1.0.0",
+  "timestamp": "2026-05-30T08:13:17.603Z",
+  "http": {
+    "documentation": 200
+  },
+  "oidc": {
+    "well_known": true,
+    "auth_code_flow": "stub"
+  },
+  "saml": {
+    "metadata": "stub"
+  },
+  "ldap": {
+    "starttls": "stub"
+  },
+  "ui": {
+    "paywall_detected": false
+  },
+  "result": "pass"
+}
