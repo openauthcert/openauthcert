@@ -11,6 +11,7 @@
     "badge_type",
     "status",
     "issued_at",
+    "expires_at",
     "digital_signature"
   ],
   "properties": {
@@ -49,6 +50,11 @@
       "type": "string",
       "format": "date-time"
     },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Certification lapses after this instant; verifiers treat the badge as expired (not valid) once passed."
+    },
     "revoked_at": {
       "type": "string",
       "format": "date-time"
@@ -58,6 +64,33 @@
       "items": {
         "type": "string",
         "format": "uri"
+      }
+    },
+    "checks": {
+      "type": "object",
+      "description": "Live endpoints the nightly compliance probe re-tests to confirm the vendor still offers the certified feature for free.",
+      "additionalProperties": false,
+      "properties": {
+        "oidc_discovery": {
+          "type": "string",
+          "format": "uri",
+          "description": "OIDC discovery document URL (…/.well-known/openid-configuration)."
+        },
+        "saml_metadata": {
+          "type": "string",
+          "format": "uri",
+          "description": "SAML 2.0 IdP/SP metadata URL."
+        },
+        "ldap": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9.-]+(:[0-9]{1,5})?$",
+          "description": "LDAP endpoint as host or host:port (TCP reachability is probed; port defaults to 389)."
+        },
+        "docs": {
+          "type": "string",
+          "format": "uri",
+          "description": "Public documentation URL probed for reachability / paywall regressions."
+        }
       }
     },
     "notes": {

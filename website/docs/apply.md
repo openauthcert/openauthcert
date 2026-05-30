@@ -22,13 +22,27 @@ Each badge JSON must include:
 - `badge_type` – one of the values from the [specification](/spec)
 - `status` – start with `pending` unless you already have approval
 - `issued_at` – ISO8601 timestamp when the badge is proposed
+- `expires_at` – ISO8601 timestamp when certification lapses (maintainers set this to **12 months** after issue when signing)
 - `digital_signature` – Base64 signature created after maintainers approve the payload
 
 Optional but recommended fields:
 
 - `evidence_urls` – publicly accessible documentation, release notes, or audits that support the claim
+- `checks` – live endpoints the [nightly compliance probe](/governance) re-tests so your certification stays honest:
+  - `oidc_discovery` – your `…/.well-known/openid-configuration` URL
+  - `saml_metadata` – your SAML 2.0 metadata URL
+  - `ldap` – `host:port` for an LDAP endpoint (TCP reachability)
+  - `docs` – the public docs page proving the feature is free
 - `notes` – context for reviewers
 - `revoked_at` – only if the badge is revoked (required when `status` is `revoked`)
+
+## Keeping your certification
+
+A badge is a point-in-time attestation, so it does not last forever:
+
+- **Renewal** – certifications are valid for 12 months (`expires_at`). After that the badge shows as **expired** until you submit a renewal PR for re-validation.
+- **Continuous checks** – a nightly probe re-tests the URLs in your `checks` block. If the certified feature disappears or moves behind a paywall for **three consecutive days**, the badge is automatically re-signed as **revoked**. See [Governance](/governance).
+- **Embed a live badge** – each registry entry offers a copy-paste *status* image (`https://openauthcert.org/badges/<vendor>/<application>/<version>.svg`). It reflects current status, so it flips to *expired* or *revoked* on its own — no stale "certified" graphics on your site.
 
 ## 2. Add supporting evidence
 

@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   probe:
@@ -21,23 +22,70 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build core + CLI
         run: pnpm --filter @openauthcert/cli... build
-      - name: Generate stub compliance evidence
-        run: node packages/cli/dist/cli.js probe --registry registry/badge-registry --out registry/evidence
-      - name: Upload evidence artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: compliance-evidence
-          path: registry/evidence
-      - name: Summarize
+
+      # Restore the persistent failure counter from the evidence-data branch so
+      # the 3-strikes rule survives across nightly runs.
+      - name: Restore probe state
         run: |
-          echo "## Compliance summary" >> "$GITHUB_STEP_SUMMARY"
-          echo "Generated stub compliance results for certified badges." >> "$GITHUB_STEP_SUMMARY"
-      - name: Commit evidence to evidence-data branch
+          mkdir -p registry/evidence
+          git fetch origin evidence-data || true
+          git show origin/evidence-data:registry/evidence/probe-state.json > registry/evidence/probe-state.json 2>/dev/null \
+            || echo '{}' > registry/evidence/probe-state.json
+
+      - name: Probe live compliance
+        run: |
+          node packages/cli/dist/cli.js probe \
+            --registry registry/badge-registry \
+            --out registry/evidence \
+            --state registry/evidence/probe-state.json \
+            --threshold 3
+
+      - name: Publish evidence + state to evidence-data branch
         if: always()
         run: |
           git config user.name "oac-bot"
           git config user.email "bot@openauthcert.org"
           git checkout -B evidence-data
-          git add registry/evidence || true
-          git commit -m "evidence: $(date -u +%Y-%m-%dT%H:%M:%SZ)" || exit 0
+          git add -f registry/evidence
+          git commit -m "evidence: $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "no evidence changes"
           git push -f origin evidence-data
+
+      # If any badge crossed the 3-failure threshold, re-sign it as revoked and
+      # open a PR against main. (The 3-strikes gate already filters transient blips.)
+      - name: Open auto-revocation PR
+        if: ${{ hashFiles('registry/evidence/revoke-list.json') != '' }}
+        env:
+          OAC_PRIVATE_KEY_B64: ${{ secrets.OAC_PRIVATE_KEY_B64 }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # revoke-list.json is always written; skip when it's an empty array.
+          if [ "$(node -e "process.stdout.write(String(JSON.parse(require('fs').readFileSync('registry/evidence/revoke-list.json','utf8')).length))")" = "0" ]; then
+            echo "no badges crossed the revocation threshold"
+            exit 0
+          fi
+          if [ -z "$OAC_PRIVATE_KEY_B64" ]; then
+            echo "::warning::revocations pending but OAC_PRIVATE_KEY_B64 is not set; skipping auto-revocation"
+            exit 0
+          fi
+          # Work from a clean copy of main (the evidence checkout above is throwaway).
+          git fetch origin main
+          git checkout -B auto-revoke/${{ github.run_id }} origin/main
+          printf '%s' "$OAC_PRIVATE_KEY_B64" > "$RUNNER_TEMP/seed.b64"
+          mapfile -t SLUGS < <(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('registry/evidence/revoke-list.json','utf8')).join('\n'))")
+          for slug in "${SLUGS[@]}"; do
+            [ -z "$slug" ] && continue
+            path="registry/badge-registry/$slug.json"
+            node packages/cli/dist/cli.js revoke "$path" \
+              --seed-b64 "@$RUNNER_TEMP/seed.b64" \
+              --notes "Automated revocation: failed compliance probe on 3 consecutive runs."
+            git add "$path"
+          done
+          git config user.name "oac-bot"
+          git config user.email "bot@openauthcert.org"
+          git commit -m "Auto-revoke badges failing compliance" || { echo "nothing to revoke"; exit 0; }
+          git push -u origin auto-revoke/${{ github.run_id }}
+          gh pr create --base main --head auto-revoke/${{ github.run_id }} \
+            --title "Auto-revoke: badges failing compliance probe" \
+            --body "The nightly compliance probe found these badges non-compliant for 3 consecutive runs. They have been re-signed as \`revoked\`. Review and merge to publish.
+
+$(cat registry/evidence/revoke-list.json)"

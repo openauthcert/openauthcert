@@ -26,12 +26,17 @@ The verification tool uses the program public key stored at <a href="/public_key
   "version": "1.0.0",
   "badge_type": "free-oidc-support",
   "status": "certified",
-  "issued_at": "2024-05-01T12:00:00Z",
-  "notes": "Initial certification release",
+  "issued_at": "2026-05-01T12:00:00Z",
+  "expires_at": "2027-05-01T12:00:00Z",
   "evidence_urls": [
     "https://id.acme.test/docs/oidc"
   ],
-  "digital_signature": "2x1YhMCtjK5Vr5yiPTb55LnmBf+Z2k44PXnbEHCZMToREOmFNVhiadwnxTS25B2pnvFy4F0Oreeyhh+LWjO+Cw=="
+  "checks": {
+    "oidc_discovery": "https://id.acme.test/.well-known/openid-configuration",
+    "docs": "https://id.acme.test/docs/oidc"
+  },
+  "notes": "Initial certification release",
+  "digital_signature": "/S6qUvxFgm3tPuUNSJpYtRyHTJu1t3j836knLPSmfsLllWjt+sw6AgzxxhBbXxdUOMh3GGe2ionkb53ROIxACA=="
 }
 ```
 :::

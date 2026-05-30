@@ -18,6 +18,7 @@ const sampleBadge: Badge = {
   badge_type: "free-oidc-support",
   status: "certified",
   issued_at: "2024-05-01T12:00:00Z",
+  expires_at: "2025-05-01T12:00:00Z",
   evidence_urls: ["https://id.acme.test/docs/oidc"],
   notes: "Initial certification — Zürich région",
   digital_signature: "",

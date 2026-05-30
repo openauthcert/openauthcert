@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { canonicalize } from '@openauthcert/core/browser'
+import { canonicalize, effectiveStatus } from '@openauthcert/core/browser'
 import publicKeyPem from '../../../public/public_key.pem?raw'
 
 interface VerificationState {
-  status: 'idle' | 'valid' | 'invalid' | 'error'
+  status: 'idle' | 'valid' | 'invalid' | 'error' | 'stale'
   message: string
   details?: string
 }
@@ -43,9 +43,22 @@ async function verify() {
     )
 
     if (valid) {
-      state.status = 'valid'
-      state.message = 'Signature verified. Badge has not been tampered with.'
-      state.details = undefined
+      // Signature holds — now check the lifecycle status (expiry/revocation).
+      const status = effectiveStatus(payload as { status: 'certified' | 'pending' | 'revoked' | 'denied'; expires_at?: string; revoked_at?: string })
+      if (status === 'certified') {
+        state.status = 'valid'
+        state.message = 'Valid and current. Signature verified and certification is active.'
+        state.details = payload.expires_at ? `Certification valid until ${formatDate(String(payload.expires_at))}.` : undefined
+      } else {
+        state.status = 'stale'
+        state.message = `Signature verified, but this badge is ${status.toUpperCase()}.`
+        state.details =
+          status === 'expired'
+            ? `Certification lapsed on ${formatDate(String(payload.expires_at ?? ''))}. The vendor must renew.`
+            : status === 'revoked'
+              ? `Certification was revoked${payload.revoked_at ? ' on ' + formatDate(String(payload.revoked_at)) : ''}.`
+              : `Current status: ${status}.`
+      }
     } else {
       state.status = 'invalid'
       state.message = 'Signature verification failed.'
@@ -64,6 +77,12 @@ async function loadPublicKey() {
   }
   const binary = pemToBytes(publicKeyPem)
   return globalThis.crypto.subtle.importKey('spki', binary, { name: 'Ed25519' }, true, ['verify'])
+}
+
+function formatDate(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat('en', { year: 'numeric', month: 'short', day: '2-digit' }).format(date)
 }
 
 function pemToBytes(pem: string): ArrayBuffer {
@@ -207,6 +226,11 @@ button:disabled {
 .verify-form__status[data-status='error'] {
   border-color: var(--vp-c-danger-1);
   background: var(--vp-c-danger-soft);
+}
+
+.verify-form__status[data-status='stale'] {
+  border-color: var(--vp-c-warning-1);
+  background: var(--vp-c-warning-soft);
 }
 
 .details {

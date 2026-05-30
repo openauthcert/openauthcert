@@ -4,10 +4,15 @@
   "version": "1.0.0",
   "badge_type": "free-oidc-support",
   "status": "certified",
-  "issued_at": "2024-05-01T12:00:00Z",
+  "issued_at": "2026-05-01T12:00:00Z",
+  "expires_at": "2027-05-01T12:00:00Z",
   "evidence_urls": [
     "https://id.acme.test/docs/oidc"
   ],
+  "checks": {
+    "oidc_discovery": "https://id.acme.test/.well-known/openid-configuration",
+    "docs": "https://id.acme.test/docs/oidc"
+  },
   "notes": "Initial certification release",
-  "digital_signature": "gLTZxpXweyMEOjAU5mCDtvFvXhi6BXJc2UdRqIQ7jU/J/mp+TfkgzcRR3v2JHaxmTEPAIYBTwk+UioqycJ2kBg=="
+  "digital_signature": "/S6qUvxFgm3tPuUNSJpYtRyHTJu1t3j836knLPSmfsLllWjt+sw6AgzxxhBbXxdUOMh3GGe2ionkb53ROIxACA=="
 }

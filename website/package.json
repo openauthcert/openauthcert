@@ -4,8 +4,10 @@
   "type": "module",
   "scripts": {
     "sync-key": "node scripts/sync-public-key.mjs",
-    "dev": "pnpm sync-key && vitepress dev docs",
-    "build": "pnpm sync-key && vitepress build docs",
+    "gen-badges": "node scripts/generate-badges.mjs",
+    "prep": "pnpm sync-key && pnpm gen-badges",
+    "dev": "pnpm prep && vitepress dev docs",
+    "build": "pnpm prep && vitepress build docs",
     "serve": "vitepress serve docs"
   },
   "dependencies": {

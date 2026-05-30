@@ -4,9 +4,24 @@ import type { Badge } from '../../registry'
 
 const props = defineProps<{ badge: Badge }>()
 
+const effective = computed(() => props.badge.effective ?? props.badge.status)
 const issued = computed(() => formatDate(props.badge.issued_at))
+const expires = computed(() =>
+  props.badge.expires_at ? formatDate(props.badge.expires_at) : undefined
+)
 const revoked = computed(() =>
   props.badge.revoked_at ? formatDate(props.badge.revoked_at) : undefined
+)
+
+const siteUrl = 'https://openauthcert.org'
+const badgeImg = computed(
+  () => `${siteUrl}/badges/${props.badge.vendor}/${props.badge.application}/${props.badge.version}.svg`
+)
+const embedMarkdown = computed(
+  () => `[![OpenAuthCert](${badgeImg.value})](${siteUrl}/registry)`
+)
+const embedHtml = computed(
+  () => `<a href="${siteUrl}/registry"><img src="${badgeImg.value}" alt="OpenAuthCert status"></a>`
 )
 
 function formatDate(value: string) {
@@ -34,8 +49,8 @@ function formatDate(value: string) {
           · <span class="badge-type">{{ badge.badge_type }}</span>
         </p>
       </div>
-      <span class="status" :data-status="badge.status">
-        {{ badge.status }}
+      <span class="status" :data-status="effective">
+        {{ effective }}
       </span>
     </header>
 
@@ -43,6 +58,10 @@ function formatDate(value: string) {
       <div>
         <dt>Issued</dt>
         <dd>{{ issued }}</dd>
+      </div>
+      <div v-if="badge.expires_at">
+        <dt>{{ effective === 'expired' ? 'Expired' : 'Expires' }}</dt>
+        <dd>{{ expires }}</dd>
       </div>
       <div v-if="badge.revoked_at">
         <dt>Revoked</dt>
@@ -54,6 +73,16 @@ function formatDate(value: string) {
       <span v-if="badge.revoked" class="badge-card__notes-label">Revocation note:</span>
       <span>{{ badge.notes }}</span>
     </p>
+
+    <details class="badge-card__embed">
+      <summary>Embed this badge</summary>
+      <p>A live status image — it updates to <em>expired</em> or <em>revoked</em> automatically.</p>
+      <img :src="badgeImg" alt="OpenAuthCert status preview" />
+      <label>Markdown</label>
+      <pre><code>{{ embedMarkdown }}</code></pre>
+      <label>HTML</label>
+      <pre><code>{{ embedHtml }}</code></pre>
+    </details>
     <slot />
   </article>
 </template>
@@ -127,6 +156,46 @@ function formatDate(value: string) {
 .status[data-status='pending'] {
   background: var(--vp-c-warning-soft);
   color: var(--vp-c-warning-1);
+}
+
+.status[data-status='expired'],
+.status[data-status='denied'] {
+  background: var(--vp-c-default-soft);
+  color: var(--vp-c-text-2);
+}
+
+.badge-card__embed {
+  font-size: 0.9rem;
+  border-top: 1px dashed var(--vp-c-divider);
+  padding-top: 0.5rem;
+}
+
+.badge-card__embed summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--vp-c-brand-1);
+}
+
+.badge-card__embed label {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--vp-c-text-2);
+}
+
+.badge-card__embed pre {
+  margin: 0.25rem 0 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--vp-c-bg);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 0.8rem;
+}
+
+.badge-card__embed img {
+  margin-top: 0.5rem;
 }
 
 .badge-card__dates {

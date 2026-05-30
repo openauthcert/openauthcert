@@ -1,15 +1,24 @@
 /** Fastify application factory for the OpenAuthCert badge server. */
 import { timingSafeEqual } from "node:crypto";
 import Fastify, { type FastifyInstance } from "fastify";
+import rateLimit from "@fastify/rate-limit";
 import {
   privateKeyFromSeedB64,
   publicKeyFromPem,
   signBadge,
   verifyBadge,
   schemaErrors,
+  addMonthsIso,
+  effectiveStatus,
+  DEFAULT_VALIDITY_MONTHS,
   type Badge,
 } from "@openauthcert/core";
 import { RegistryStore } from "./store.js";
+
+/** Current UTC instant as a badge timestamp (seconds precision, trailing Z). */
+function nowIso(): string {
+  return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+}
 
 export interface AppOptions {
   registryRoot: string;
@@ -45,8 +54,18 @@ function constantTimeEqual(a: string, b: string): boolean {
  *   - `adminToken` (optional): bearer token required to access admin-protected endpoints (`/issue`, `/revoke`); when omitted those endpoints will reject authorization attempts.
  * @returns A configured Fastify instance serving the OpenAuthCert badge API
  */
-export function buildApp(opts: AppOptions): FastifyInstance {
+export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
+
+  // Rate-limit every route (defends the authorization-gated /issue and /revoke
+  // against brute-force/abuse). Awaited before routes are defined so the global
+  // hook and the stricter per-route overrides below take effect.
+  await app.register(rateLimit, {
+    global: true,
+    max: 120,
+    timeWindow: "1 minute",
+  });
+
   const store = new RegistryStore(opts.registryRoot);
   const pub = publicKeyFromPem(opts.publicKeyPem);
   const priv = opts.privateSeedB64
@@ -78,13 +97,18 @@ export function buildApp(opts: AppOptions): FastifyInstance {
 
   app.get("/healthz", async () => ({ ok: true }));
 
-  app.get("/badges", async () => {
+  // Explicit per-route rate limits on the filesystem-reading endpoints (in
+  // addition to the global limiter) so the protection is unambiguous.
+  const readLimit = { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } };
+
+  app.get("/badges", readLimit, async () => {
     const items = store.listAll();
     return { count: items.length, items };
   });
 
   app.get<{ Params: { vendor: string; application: string } }>(
     "/badges/:vendor/:application",
+    readLimit,
     async (req) => {
       const { vendor, application } = req.params;
       const items = store.listApp(vendor, application);
@@ -92,7 +116,10 @@ export function buildApp(opts: AppOptions): FastifyInstance {
     },
   );
 
-  app.post<{ Body: Badge }>("/issue", async (req, reply) => {
+  app.post<{ Body: Badge }>(
+    "/issue",
+    { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
+    async (req, reply) => {
     requireAdmin(req.headers.authorization);
     const signingKey = requireSigning();
     const badge = { ...req.body } as Badge;
@@ -101,8 +128,9 @@ export function buildApp(opts: AppOptions): FastifyInstance {
         .code(400)
         .send({ error: "status must be 'certified' or 'pending' on issue" });
     }
-    if (!badge.issued_at) {
-      badge.issued_at = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+    if (!badge.issued_at) badge.issued_at = nowIso();
+    if (!badge.expires_at) {
+      badge.expires_at = addMonthsIso(badge.issued_at, DEFAULT_VALIDITY_MONTHS);
     }
     badge.digital_signature = "";
     const errors = schemaErrors({ ...badge, digital_signature: "AA==" });
@@ -116,6 +144,7 @@ export function buildApp(opts: AppOptions): FastifyInstance {
 
   app.post<{ Params: { vendor: string; application: string; version: string } }>(
     "/revoke/:vendor/:application/:version",
+    { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
     async (req, reply) => {
       requireAdmin(req.headers.authorization);
       const signingKey = requireSigning();
@@ -131,7 +160,15 @@ export function buildApp(opts: AppOptions): FastifyInstance {
   );
 
   app.post<{ Body: Badge }>("/verify", async (req) => {
-    return { valid: verifyBadge(req.body, pub) };
+    const signatureValid = verifyBadge(req.body, pub);
+    const status = effectiveStatus(req.body);
+    // A badge is only "good" if the signature holds AND it currently certifies.
+    return {
+      valid: signatureValid,
+      status,
+      current: signatureValid && status === "certified",
+      expires_at: req.body.expires_at,
+    };
   });
 
   return app;
