@@ -97,13 +97,18 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
 
   app.get("/healthz", async () => ({ ok: true }));
 
-  app.get("/badges", async () => {
+  // Explicit per-route rate limits on the filesystem-reading endpoints (in
+  // addition to the global limiter) so the protection is unambiguous.
+  const readLimit = { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } };
+
+  app.get("/badges", readLimit, async () => {
     const items = store.listAll();
     return { count: items.length, items };
   });
 
   app.get<{ Params: { vendor: string; application: string } }>(
     "/badges/:vendor/:application",
+    readLimit,
     async (req) => {
       const { vendor, application } = req.params;
       const items = store.listApp(vendor, application);
