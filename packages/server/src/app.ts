@@ -159,17 +159,21 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
     },
   );
 
-  app.post<{ Body: Badge }>("/verify", async (req) => {
-    const signatureValid = verifyBadge(req.body, pub);
-    const status = effectiveStatus(req.body);
-    // A badge is only "good" if the signature holds AND it currently certifies.
-    return {
-      valid: signatureValid,
-      status,
-      current: signatureValid && status === "certified",
-      expires_at: req.body.expires_at,
-    };
-  });
+  app.post<{ Body: Badge }>(
+    "/verify",
+    { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } },
+    async (req) => {
+      const signatureValid = verifyBadge(req.body, pub);
+      const status = effectiveStatus(req.body);
+      // A badge is only "good" if the signature holds AND it currently certifies.
+      return {
+        valid: signatureValid,
+        status,
+        current: signatureValid && status === "certified",
+        expires_at: req.body.expires_at,
+      };
+    },
+  );
 
   return app;
 }
