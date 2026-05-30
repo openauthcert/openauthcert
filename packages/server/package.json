@@ -4,13 +4,16 @@
   "description": "Fastify badge server — issue, revoke, and verify OpenAuthCert badges.",
   "type": "module",
   "main": "dist/index.js",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -b",
     "start": "node dist/index.js",
     "test": "vitest run"
   },
   "dependencies": {
+    "@fastify/rate-limit": "^10.3.0",
     "@openauthcert/core": "workspace:*",
     "fastify": "5.8.5"
   },

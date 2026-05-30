@@ -20,6 +20,7 @@ function newApp(root: string) {
     adminToken: ADMIN,
   });
 }
+// buildApp is async (it awaits the rate-limit plugin); every test awaits newApp.
 
 const baseBadge = {
   vendor: "acme-cloud",
@@ -42,7 +43,7 @@ describe("badge server", () => {
   });
 
   it("rejects /issue without an admin token", async () => {
-    const app = newApp(root);
+    const app = await newApp(root);
     const res = await app.inject({
       method: "POST",
       url: "/issue",
@@ -53,7 +54,7 @@ describe("badge server", () => {
   });
 
   it("issues, lists, and verifies a badge", async () => {
-    const app = newApp(root);
+    const app = await newApp(root);
     const issue = await app.inject({
       method: "POST",
       url: "/issue",
@@ -81,7 +82,7 @@ describe("badge server", () => {
   });
 
   it("revokes a badge and sets revoked_at", async () => {
-    const app = newApp(root);
+    const app = await newApp(root);
     await app.inject({
       method: "POST",
       url: "/issue",
@@ -124,7 +125,7 @@ describe("badge server", () => {
     } as Badge;
     badge.digital_signature = signBadge(badge, priv);
 
-    const app = newApp(root);
+    const app = await newApp(root);
     const verify = await app.inject({
       method: "POST",
       url: "/verify",
@@ -134,8 +135,23 @@ describe("badge server", () => {
     await app.close();
   });
 
+  it("rate-limits the admin /issue route", async () => {
+    const app = await newApp(root);
+    let sawTooMany = false;
+    // The rate-limit hook runs before auth, so unauthenticated calls still count.
+    for (let i = 0; i < 25; i += 1) {
+      const res = await app.inject({ method: "POST", url: "/issue", payload: baseBadge });
+      if (res.statusCode === 429) {
+        sawTooMany = true;
+        break;
+      }
+    }
+    expect(sawTooMany).toBe(true);
+    await app.close();
+  });
+
   it("blocks path traversal in route params", async () => {
-    const app = newApp(root);
+    const app = await newApp(root);
     const res = await app.inject({
       method: "GET",
       url: "/badges/..%2f..%2fetc/passwd",

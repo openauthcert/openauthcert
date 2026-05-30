@@ -19,7 +19,7 @@ function loadPublicKeyPem(): string {
   return readFileSync(path, "utf8");
 }
 
-const app = buildApp({
+const app = await buildApp({
   registryRoot: process.env["OAC_REGISTRY_ROOT"] ?? "registry/badge-registry",
   privateSeedB64: process.env["OAC_PRIVATE_KEY_B64"],
   publicKeyPem: loadPublicKeyPem(),
@@ -29,10 +29,10 @@ const app = buildApp({
 const port = Number(process.env["PORT"] ?? 8080);
 const host = process.env["HOST"] ?? "0.0.0.0";
 
-app
-  .listen({ port, host })
-  .then((addr) => console.log(`badge server listening on ${addr}`))
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+try {
+  const addr = await app.listen({ port, host });
+  console.log(`badge server listening on ${addr}`);
+} catch (err) {
+  console.error(err);
+  process.exit(1);
+}

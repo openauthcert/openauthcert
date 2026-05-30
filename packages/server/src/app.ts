@@ -1,6 +1,7 @@
 /** Fastify application factory for the OpenAuthCert badge server. */
 import { timingSafeEqual } from "node:crypto";
 import Fastify, { type FastifyInstance } from "fastify";
+import rateLimit from "@fastify/rate-limit";
 import {
   privateKeyFromSeedB64,
   publicKeyFromPem,
@@ -53,8 +54,18 @@ function constantTimeEqual(a: string, b: string): boolean {
  *   - `adminToken` (optional): bearer token required to access admin-protected endpoints (`/issue`, `/revoke`); when omitted those endpoints will reject authorization attempts.
  * @returns A configured Fastify instance serving the OpenAuthCert badge API
  */
-export function buildApp(opts: AppOptions): FastifyInstance {
+export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
+
+  // Rate-limit every route (defends the authorization-gated /issue and /revoke
+  // against brute-force/abuse). Awaited before routes are defined so the global
+  // hook and the stricter per-route overrides below take effect.
+  await app.register(rateLimit, {
+    global: true,
+    max: 120,
+    timeWindow: "1 minute",
+  });
+
   const store = new RegistryStore(opts.registryRoot);
   const pub = publicKeyFromPem(opts.publicKeyPem);
   const priv = opts.privateSeedB64
@@ -100,7 +111,10 @@ export function buildApp(opts: AppOptions): FastifyInstance {
     },
   );
 
-  app.post<{ Body: Badge }>("/issue", async (req, reply) => {
+  app.post<{ Body: Badge }>(
+    "/issue",
+    { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
+    async (req, reply) => {
     requireAdmin(req.headers.authorization);
     const signingKey = requireSigning();
     const badge = { ...req.body } as Badge;
@@ -125,6 +139,7 @@ export function buildApp(opts: AppOptions): FastifyInstance {
 
   app.post<{ Params: { vendor: string; application: string; version: string } }>(
     "/revoke/:vendor/:application/:version",
+    { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
     async (req, reply) => {
       requireAdmin(req.headers.authorization);
       const signingKey = requireSigning();
