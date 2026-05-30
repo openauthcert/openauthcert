@@ -8,6 +8,10 @@ on:
       - 'registry/**'
       - 'specs/**'
       - 'packages/core/**'
+  # Nightly rebuild so status badges flip to "expired" as certifications lapse,
+  # even when the registry itself hasn't changed.
+  schedule:
+    - cron: '0 5 * * *'
   workflow_dispatch:
 
 permissions:

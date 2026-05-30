@@ -1,10 +1,13 @@
-import type { Badge as CoreBadge } from '@openauthcert/core/browser'
+import type { Badge as CoreBadge, EffectiveStatus } from '@openauthcert/core/browser'
+import { effectiveStatus } from '@openauthcert/core/browser'
 
 // The registry's badge type is the canonical core type plus derived UI fields.
 export type Badge = CoreBadge & {
   slug?: string
   path?: string
   revoked?: boolean
+  /** Lifecycle status shown to users: certified flips to "expired" past expires_at. */
+  effective?: EffectiveStatus
 }
 
 type SearchParams = {
@@ -40,7 +43,8 @@ function normalize(): Badge[] {
       version: data.version || version,
       slug: `${vendor}/${application}/${version}`,
       path: key.replace(/^\.\.\//, ''),
-      revoked: data.status === 'revoked'
+      revoked: data.status === 'revoked',
+      effective: effectiveStatus(data)
     }
     items.push(item)
   }
@@ -56,7 +60,7 @@ export function getAllBadges(): Badge[] {
 export function facets() {
   const vendors = new Set<string>(), apps = new Set<string>(), types = new Set<string>(), statuses = new Set<string>()
   for (const b of ALL) {
-    vendors.add(b.vendor); apps.add(b.application); types.add(b.badge_type); statuses.add(b.status)
+    vendors.add(b.vendor); apps.add(b.application); types.add(b.badge_type); statuses.add(b.effective || b.status)
   }
   return {
     vendors: Array.from(vendors).sort(),
@@ -71,13 +75,13 @@ export function searchBadges(p: SearchParams = {}) {
   const q = (p.q || '').toLowerCase()
   if (q) {
     items = items.filter(b =>
-      `${b.vendor} ${b.application} ${b.version} ${b.badge_type} ${b.status}`.toLowerCase().includes(q)
+      `${b.vendor} ${b.application} ${b.version} ${b.badge_type} ${b.effective || b.status}`.toLowerCase().includes(q)
     )
   }
   if (p.vendor) items = items.filter(b => b.vendor === p.vendor)
   if (p.app) items = items.filter(b => b.application === p.app)
   if (p.type) items = items.filter(b => b.badge_type === p.type)
-  if (p.status) items = items.filter(b => b.status === p.status)
+  if (p.status) items = items.filter(b => (b.effective || b.status) === p.status)
 
   switch (p.sort) {
     case 'vendor': items.sort((a,b)=>a.vendor.localeCompare(b.vendor)); break

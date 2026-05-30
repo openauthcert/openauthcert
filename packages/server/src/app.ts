@@ -7,9 +7,17 @@ import {
   signBadge,
   verifyBadge,
   schemaErrors,
+  addMonthsIso,
+  effectiveStatus,
+  DEFAULT_VALIDITY_MONTHS,
   type Badge,
 } from "@openauthcert/core";
 import { RegistryStore } from "./store.js";
+
+/** Current UTC instant as a badge timestamp (seconds precision, trailing Z). */
+function nowIso(): string {
+  return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+}
 
 export interface AppOptions {
   registryRoot: string;
@@ -101,8 +109,9 @@ export function buildApp(opts: AppOptions): FastifyInstance {
         .code(400)
         .send({ error: "status must be 'certified' or 'pending' on issue" });
     }
-    if (!badge.issued_at) {
-      badge.issued_at = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+    if (!badge.issued_at) badge.issued_at = nowIso();
+    if (!badge.expires_at) {
+      badge.expires_at = addMonthsIso(badge.issued_at, DEFAULT_VALIDITY_MONTHS);
     }
     badge.digital_signature = "";
     const errors = schemaErrors({ ...badge, digital_signature: "AA==" });
@@ -131,7 +140,15 @@ export function buildApp(opts: AppOptions): FastifyInstance {
   );
 
   app.post<{ Body: Badge }>("/verify", async (req) => {
-    return { valid: verifyBadge(req.body, pub) };
+    const signatureValid = verifyBadge(req.body, pub);
+    const status = effectiveStatus(req.body);
+    // A badge is only "good" if the signature holds AND it currently certifies.
+    return {
+      valid: signatureValid,
+      status,
+      current: signatureValid && status === "certified",
+      expires_at: req.body.expires_at,
+    };
   });
 
   return app;

@@ -8,18 +8,16 @@
  *   verify <badge.json> --pub <v>        Verify a badge's signature.
  *   validate [--registry <dir>] --pub <v>  Validate the whole registry.
  *   revoke <badge.json> --seed-b64 <v> [--notes <s>]  Revoke + re-sign.
- *   probe [--registry <dir>] [--out <dir>]  Generate stub compliance evidence.
+ *   probe [--registry <dir>] [--out <dir>] [--state <f>] [--threshold <n>]
+ *                                          Re-test live compliance; flag repeat failures.
+ *
+ * `sign` accepts `--ttl-months <n>` to set the certification window (default 12).
  *
  * `--seed-b64` and `--pub` accept either a literal value or `@path` to read
  * the value from a file.
  */
 import { parseArgs } from "node:util";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   generateKeyPair,
@@ -28,9 +26,17 @@ import {
   signBadge,
   verifyBadge,
   schemaErrors,
+  addMonthsIso,
+  DEFAULT_VALIDITY_MONTHS,
   type Badge,
 } from "@openauthcert/core";
 import { walkRegistry, pathConsistencyError } from "./registry.js";
+import { runProbe, DEFAULT_REVOKE_THRESHOLD } from "./probe.js";
+
+/** Current UTC instant as a badge timestamp (seconds precision, trailing Z). */
+function nowIso(): string {
+  return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+}
 
 /**
  * Write an error message to stderr and exit the process with code 1.
@@ -106,13 +112,19 @@ function cmdSign(positionals: string[], values: Record<string, unknown>): void {
   const seed = values["seed-b64"];
   if (typeof seed !== "string") fail("sign requires --seed-b64 <value|@file>");
   const badge = readBadge(badgePath);
+  // Default the certification window if the author didn't set one explicitly.
+  if (!badge.issued_at) badge.issued_at = nowIso();
+  if (!badge.expires_at) {
+    const ttl = Number(values["ttl-months"] ?? DEFAULT_VALIDITY_MONTHS);
+    badge.expires_at = addMonthsIso(badge.issued_at, ttl);
+  }
   // Validate the body with a placeholder signature, since the real one is set below.
   const errors = schemaErrors({ ...badge, digital_signature: "AA==" });
   if (errors.length) fail(`badge fails schema:\n  ${errors.join("\n  ")}`);
   const priv = privateKeyFromSeedB64(resolveValue(seed as string));
   badge.digital_signature = signBadge(badge, priv);
   writeBadge(badgePath, badge);
-  console.log(`signed ${badgePath}`);
+  console.log(`signed ${badgePath} (expires ${badge.expires_at})`);
 }
 
 /**
@@ -200,44 +212,42 @@ function cmdRevoke(positionals: string[], values: Record<string, unknown>): void
 }
 
 /**
- * Generate dated stub evidence summaries for all certified badges in a registry.
+ * Probe the live endpoints of every currently-certified badge, record dated
+ * evidence + a persistent failure counter, and write a `revoke-list.json` of
+ * badges that have failed `--threshold` times in a row.
  *
- * Writes a `summary.json` file (stub payload) for each badge whose `status` is
- * `"certified"` into a directory structured as
- * `<out>/<vendor>/<application>/<version>/<YYYYMMDD>/summary.json`.
- *
- * The `values` map may include:
- * - `registry`: path to the badge registry (defaults to `"registry/badge-registry"`).
- * - `out`: base output directory for evidence (defaults to `"registry/evidence"`).
- *
- * @param values - Parsed CLI option values; recognizes `registry` and `out` string keys
+ * Options: `--registry`, `--out`, `--state <file>` (failure counters; defaults
+ * to `<out>/probe-state.json`), `--threshold <n>` (default 3).
  */
-function cmdProbe(values: Record<string, unknown>): void {
+async function cmdProbe(values: Record<string, unknown>): Promise<void> {
   const registry =
     (values["registry"] as string | undefined) ?? "registry/badge-registry";
   const out = (values["out"] as string | undefined) ?? "registry/evidence";
-  const day = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  let count = 0;
-  for (const { badge } of walkRegistry(registry)) {
-    if (badge.status !== "certified") continue;
-    const dir = join(out, badge.vendor, badge.application, badge.version, day);
-    mkdirSync(dir, { recursive: true });
-    const summary = {
-      vendor: badge.vendor,
-      application: badge.application,
-      version: badge.version,
-      timestamp: new Date().toISOString(),
-      http: { documentation: 200 },
-      oidc: { well_known: true, auth_code_flow: "stub" },
-      saml: { metadata: "stub" },
-      ldap: { starttls: "stub" },
-      ui: { paywall_detected: false },
-      result: "pass",
-    };
-    writeFileSync(join(dir, "summary.json"), JSON.stringify(summary, null, 2) + "\n");
-    count += 1;
+  const statePath =
+    (values["state"] as string | undefined) ?? join(out, "probe-state.json");
+  const threshold = Number(values["threshold"] ?? DEFAULT_REVOKE_THRESHOLD);
+
+  const { results, toRevoke } = await runProbe({
+    registry,
+    out,
+    statePath,
+    threshold,
+  });
+
+  const tally = (r: string): number => results.filter((x) => x.result === r).length;
+  console.log(
+    `probed ${results.length} certified badge(s): ` +
+      `${tally("pass")} pass, ${tally("fail")} fail, ${tally("skip")} skip`,
+  );
+
+  if (toRevoke.length) {
+    const listPath = join(out, "revoke-list.json");
+    writeFileSync(listPath, JSON.stringify(toRevoke, null, 2) + "\n");
+    console.log(
+      `${toRevoke.length} badge(s) reached the revocation threshold (${threshold}) -> ${listPath}`,
+    );
+    for (const slug of toRevoke) console.log(`  REVOKE ${slug}`);
   }
-  console.log(`generated stub evidence for ${count} certified badge(s)`);
 }
 
 /**
@@ -250,7 +260,7 @@ function cmdProbe(values: Record<string, unknown>): void {
  * Supported option names: `--seed-b64`, `--pub`, `--registry`, `--out`, and `--notes`.
  * If the command is not one of the recognized names, the process is terminated via `fail`.
  */
-function main(): void {
+async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
   const { values, positionals } = parseArgs({
     args: rest,
@@ -261,6 +271,9 @@ function main(): void {
       registry: { type: "string" },
       out: { type: "string" },
       notes: { type: "string" },
+      state: { type: "string" },
+      threshold: { type: "string" },
+      "ttl-months": { type: "string" },
     },
   });
 
@@ -282,4 +295,7 @@ function main(): void {
   }
 }
 
-main();
+main().catch((err) => {
+  console.error(`error: ${String(err)}`);
+  process.exit(1);
+});

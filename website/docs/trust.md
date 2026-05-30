@@ -12,6 +12,16 @@ OpenAuthCert badges are designed to be portable proof objects. Vendors can embed
 - The canonical payload excludes the `digital_signature` field and is serialized with sorted keys.
 - The public key is published at <a href="/public_key.pem" download><code>/public_key.pem</code></a> for anyone to use.
 - Signatures are verified using the same algorithm in browsers (Web Crypto) and in tooling.
+- The signed payload includes `expires_at`, so a badge is **intrinsically time-bounded** — like a TLS certificate, it lapses to *expired* on its own without any further action, and the [verify tool](/verify) reports that even when the signature is still valid.
+
+## Freshness, not just authenticity
+
+A valid signature proves a badge is *authentic and untampered*, but not that it is *still current*. Always check the lifecycle status too:
+
+- **Expired** — past `expires_at`; the vendor must renew.
+- **Revoked** — explicitly withdrawn (see [Governance](/governance)).
+
+The [verify tool](/verify), the badge server's `/verify` endpoint, and the embeddable status SVG all surface this lifecycle status, not just signature validity.
 
 ## Verifying badges on the command line
 

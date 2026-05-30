@@ -28,6 +28,7 @@ const baseBadge = {
   badge_type: "free-oidc-support",
   status: "certified",
   issued_at: "2024-05-01T12:00:00Z",
+  expires_at: "2999-01-01T00:00:00Z",
 };
 
 describe("badge server", () => {
@@ -72,7 +73,10 @@ describe("badge server", () => {
       url: "/verify",
       payload: issued,
     });
-    expect(verify.json()).toEqual({ valid: true });
+    const vbody = verify.json() as { valid: boolean; status: string; current: boolean };
+    expect(vbody.valid).toBe(true);
+    expect(vbody.status).toBe("certified");
+    expect(vbody.current).toBe(true);
     await app.close();
   });
 
@@ -104,7 +108,10 @@ describe("badge server", () => {
       url: "/verify",
       payload: items[0],
     });
-    expect(verify.json()).toEqual({ valid: true });
+    const vbody = verify.json() as { valid: boolean; status: string; current: boolean };
+    expect(vbody.valid).toBe(true);
+    expect(vbody.status).toBe("revoked");
+    expect(vbody.current).toBe(false);
     await app.close();
   });
 
@@ -123,7 +130,7 @@ describe("badge server", () => {
       url: "/verify",
       payload: badge,
     });
-    expect(verify.json()).toEqual({ valid: true });
+    expect((verify.json() as { valid: boolean }).valid).toBe(true);
     await app.close();
   });
 
