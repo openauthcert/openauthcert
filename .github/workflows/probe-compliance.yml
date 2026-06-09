@@ -84,8 +84,16 @@ jobs:
           git config user.email "bot@openauthcert.org"
           git commit -m "Auto-revoke badges failing compliance" || { echo "nothing to revoke"; exit 0; }
           git push -u origin auto-revoke/${{ github.run_id }}
-          gh pr create --base main --head auto-revoke/${{ github.run_id }} \
+          pr_url=$(gh pr create --base main --head auto-revoke/${{ github.run_id }} \
             --title "Auto-revoke: badges failing compliance probe" \
-            --body "The nightly compliance probe found these badges non-compliant for 3 consecutive runs. They have been re-signed as \`revoked\`. Review and merge to publish.
+            --body "The nightly compliance probe found these badges non-compliant for 3 consecutive runs. They have been re-signed as \`revoked\`.
 
-$(cat registry/evidence/revoke-list.json)"
+This PR is set to **auto-merge once required checks pass**.
+
+$(cat registry/evidence/revoke-list.json)")
+          echo "opened $pr_url"
+          # Merge automatically once required checks pass. Requires repo
+          # Settings -> General -> "Allow auto-merge" to be enabled; if it isn't,
+          # this warns and the PR stays open for manual merge.
+          gh pr merge --auto --squash "$pr_url" \
+            || echo "::warning::could not enable auto-merge (is 'Allow auto-merge' enabled?); PR left open"
