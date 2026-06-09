@@ -7,6 +7,13 @@ import type { Badge } from "./types.js";
 
 type BadgeSlugParts = Pick<Badge, "vendor" | "application" | "version">;
 
+/** Trim trailing slashes in linear time (no regex backtracking on hostile input). */
+function trimTrailingSlashes(url: string): string {
+  let end = url.length;
+  while (end > 0 && url.charCodeAt(end - 1) === 0x2f /* '/' */) end -= 1;
+  return url.slice(0, end);
+}
+
 /** Site-root path of a badge's status SVG, e.g. `/badges/acme/cloud-sso/1.0.0.svg`. */
 export function statusSvgPath(b: BadgeSlugParts): string {
   return `/badges/${encodeURIComponent(b.vendor)}/${encodeURIComponent(
@@ -23,7 +30,7 @@ export function registryDeepLink(
   b: Pick<Badge, "vendor" | "application">,
   siteUrl = "https://openauthcert.org",
 ): string {
-  const base = siteUrl.replace(/\/+$/, "");
+  const base = trimTrailingSlashes(siteUrl);
   const q = new URLSearchParams({ vendor: b.vendor, app: b.application });
   return `${base}/registry?${q.toString()}`;
 }
@@ -33,5 +40,5 @@ export function statusSvgUrl(
   b: BadgeSlugParts,
   siteUrl = "https://openauthcert.org",
 ): string {
-  return `${siteUrl.replace(/\/+$/, "")}${statusSvgPath(b)}`;
+  return `${trimTrailingSlashes(siteUrl)}${statusSvgPath(b)}`;
 }

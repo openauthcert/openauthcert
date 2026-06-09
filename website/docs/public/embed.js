@@ -53,8 +53,15 @@
     return { vendor: vendor, application: application, version: version };
   }
 
+  // Trim trailing slashes in linear time (no regex backtracking).
+  function trimTrailingSlashes(s) {
+    var end = s.length;
+    while (end > 0 && s.charCodeAt(end - 1) === 0x2f /* '/' */) end -= 1;
+    return s.slice(0, end);
+  }
+
   function urlsFor(cfg, site) {
-    var base = (site || DEFAULT_SITE).replace(/\/+$/, "");
+    var base = trimTrailingSlashes(site || DEFAULT_SITE);
     var v = encodeURIComponent(cfg.vendor);
     var a = encodeURIComponent(cfg.application);
     var ver = encodeURIComponent(cfg.version);

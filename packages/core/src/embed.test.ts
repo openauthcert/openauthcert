@@ -14,6 +14,16 @@ describe("embed URLs", () => {
     );
   });
 
+  it("trims many trailing slashes in linear time", () => {
+    const noisy = "https://openauthcert.org" + "/".repeat(5000);
+    expect(statusSvgUrl(badge, noisy)).toBe(
+      "https://openauthcert.org/badges/acme-cloud/cloud-sso/1.0.0.svg",
+    );
+    expect(registryDeepLink(badge, noisy)).toBe(
+      "https://openauthcert.org/registry?vendor=acme-cloud&app=cloud-sso",
+    );
+  });
+
   it("deep-links to the pre-filtered registry", () => {
     expect(registryDeepLink(badge)).toBe(
       "https://openauthcert.org/registry?vendor=acme-cloud&app=cloud-sso",
