@@ -13,7 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@fastify/rate-limit": "^10.3.0",
+    "@fastify/rate-limit": "^11.0.0",
     "@openauthcert/core": "workspace:*",
     "fastify": "5.8.5"
   },
