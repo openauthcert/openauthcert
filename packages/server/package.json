@@ -15,7 +15,7 @@
   "dependencies": {
     "@fastify/rate-limit": "^10.3.0",
     "@openauthcert/core": "workspace:*",
-    "fastify": "5.8.5"
+    "fastify": "5.9.0"
   },
   "devDependencies": {
     "@types/node": "25.9.1",
