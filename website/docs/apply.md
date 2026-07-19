@@ -41,8 +41,26 @@ Optional but recommended fields:
 A badge is a point-in-time attestation, so it does not last forever:
 
 - **Renewal** – certifications are valid for 12 months (`expires_at`). After that the badge shows as **expired** until you submit a renewal PR for re-validation.
-- **Continuous checks** – a nightly probe re-tests the URLs in your `checks` block. If the certified feature disappears or moves behind a paywall for **three consecutive days**, the badge is automatically re-signed as **revoked**. See [Governance](/governance).
-- **Embed a live badge** – each registry entry offers a copy-paste *status* image (`https://openauthcert.org/badges/<vendor>/<application>/<version>.svg`). It reflects current status, so it flips to *expired* or *revoked* on its own — no stale "certified" graphics on your site.
+- **Continuous checks** – a nightly probe re-tests the URLs in your `checks` block. If the certified feature disappears or moves behind a paywall for **three consecutive probe runs**, the badge is automatically re-signed as **revoked**. See [Governance](/governance).
+
+## Show your badge
+
+Every registry entry has an **Embed this badge** panel with copy-paste snippets. All three render the same live status image (regenerated on openauthcert.org, so it flips to *expired* or *revoked* on its own — no stale "certified" graphics on your site):
+
+- **Markdown / HTML image** – links to your filtered registry entry:
+  ```html
+  <a href="https://openauthcert.org/registry?vendor=<vendor>&app=<application>"><img src="https://openauthcert.org/badges/<vendor>/<application>/<version>.svg" alt="OpenAuthCert status"></a>
+  ```
+- **Clickable JS widget** – drop in a placeholder + one script tag; clicking the badge opens your entry in the registry:
+  ```html
+  <div data-openauthcert
+       data-vendor="<vendor>"
+       data-application="<application>"
+       data-version="<version>"></div>
+  <script src="https://openauthcert.org/embed.js" async></script>
+  ```
+
+The widget makes no external calls beyond loading the badge image, sets no cookies, and does no tracking.
 
 ## 2. Add supporting evidence
 
