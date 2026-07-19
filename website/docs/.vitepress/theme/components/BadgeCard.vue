@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { statusSvgUrl, registryDeepLink } from '@openauthcert/core/browser'
 import type { Badge } from '../../registry'
 
 const props = defineProps<{ badge: Badge }>()
@@ -14,14 +15,21 @@ const revoked = computed(() =>
 )
 
 const siteUrl = 'https://openauthcert.org'
-const badgeImg = computed(
-  () => `${siteUrl}/badges/${props.badge.vendor}/${props.badge.application}/${props.badge.version}.svg`
-)
+const badgeImg = computed(() => statusSvgUrl(props.badge, siteUrl))
+const registryUrl = computed(() => registryDeepLink(props.badge, siteUrl))
 const embedMarkdown = computed(
-  () => `[![OpenAuthCert](${badgeImg.value})](${siteUrl}/registry)`
+  () => `[![OpenAuthCert](${badgeImg.value})](${registryUrl.value})`
 )
 const embedHtml = computed(
-  () => `<a href="${siteUrl}/registry"><img src="${badgeImg.value}" alt="OpenAuthCert status"></a>`
+  () => `<a href="${registryUrl.value}"><img src="${badgeImg.value}" alt="OpenAuthCert status"></a>`
+)
+const widgetSnippet = computed(
+  () =>
+    `<div data-openauthcert\n` +
+    `     data-vendor="${props.badge.vendor}"\n` +
+    `     data-application="${props.badge.application}"\n` +
+    `     data-version="${props.badge.version}"></div>\n` +
+    `<script src="${siteUrl}/embed.js" async><\/script>`
 )
 
 function formatDate(value: string) {
@@ -82,6 +90,8 @@ function formatDate(value: string) {
       <pre><code>{{ embedMarkdown }}</code></pre>
       <label>HTML</label>
       <pre><code>{{ embedHtml }}</code></pre>
+      <label>Clickable widget (JS)</label>
+      <pre><code>{{ widgetSnippet }}</code></pre>
     </details>
     <slot />
   </article>
